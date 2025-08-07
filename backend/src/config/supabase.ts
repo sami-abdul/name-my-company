@@ -219,25 +219,41 @@ export const getUserByEmail = async (email: string) => {
   }
 };
 
-export const getUserSessions = async (userId: string, limit: number = 10) => {
+export const getUserSessions = async (userId: string, limit: number = 10, offset: number = 0) => {
   try {
+    // Validate inputs
+    if (!userId || typeof userId !== 'string') {
+      throw new Error('Invalid user ID');
+    }
+    
+    if (limit < 1 || limit > 50) {
+      throw new Error('Limit must be between 1 and 50');
+    }
+    
+    if (offset < 0) {
+      throw new Error('Offset must be non-negative');
+    }
+
     const { data, error } = await supabase
       .from('generation_sessions')
       .select(`
         *,
         domain_suggestions (*)
       `)
-      .eq('user_id', userId)
+      .eq('user_id', userId.trim())
       .order('created_at', { ascending: false })
-      .limit(limit);
+      .range(offset, offset + limit - 1);
     
     if (error) {
-      console.error('Database error getting user sessions:', error);
-      throw new Error(`Failed to get user sessions: ${error.message}`);
+      const isProduction = process.env['NODE_ENV'] === 'production';
+      if (!isProduction) {
+        console.error('Database error getting user sessions:', error);
+      }
+      throw new Error('Failed to get user sessions');
     }
-    return data;
+    return data || [];
   } catch (error) {
-    console.error('Error in getUserSessions:', error);
+    console.error('Error in getUserSessions:', error instanceof Error ? error.message : 'Unknown error');
     throw error;
   }
 };

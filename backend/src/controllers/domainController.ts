@@ -124,7 +124,8 @@ export const checkDomainAvailabilityController = async (req: Request, res: Respo
 export const getUserGenerationHistory = async (req: Request, res: Response): Promise<Response | void> => {
   try {
     const authUser = (req as any).user;
-    const limit = parseInt(req.query['limit'] as string) || 10;
+    const limit = Math.min(parseInt(req.query['limit'] as string) || 10, 50); // Cap at 50
+    const offset = parseInt(req.query['offset'] as string) || 0;
 
     if (!authUser) {
       return res.status(401).json({
@@ -143,11 +144,33 @@ export const getUserGenerationHistory = async (req: Request, res: Response): Pro
     }
 
     // Get user's generation sessions with domain suggestions
-    const sessions = await getUserSessions(user.id, limit);
+    const sessions = await getUserSessions(user.id, limit, offset);
 
-    const response: ApiResponse<typeof sessions> = {
+    // Calculate some basic stats
+    const totalSessions = sessions.length;
+    const totalDomains = sessions.reduce((sum, session) => 
+      sum + (session.domain_suggestions?.length || 0), 0
+    );
+
+    const response: ApiResponse<{
+      sessions: typeof sessions;
+      pagination: {
+        limit: number;
+        offset: number;
+        total_sessions: number;
+        total_domains: number;
+      };
+    }> = {
       status: 'success',
-      data: sessions
+      data: {
+        sessions,
+        pagination: {
+          limit,
+          offset,
+          total_sessions: totalSessions,
+          total_domains: totalDomains
+        }
+      }
     };
 
     return res.json(response);

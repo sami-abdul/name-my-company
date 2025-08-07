@@ -8,7 +8,8 @@
     "start": "node dist/index.js",
     "dev": "nodemon src/index.ts",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "test:integration": "ts-node test/day2-integration-test.ts"
+    "test:integration": "ts-node test/day2-integration-test.ts",
+    "test:history": "ts-node test/user-history-endpoint-test.ts"
   },
   "keywords": ["ai", "domain", "generator", "supabase", "openai"],
   "author": "",
