@@ -6,40 +6,33 @@ This document outlines the detailed implementation plan for Phase 1 of the AI Do
 
 ## Phase 1 Objectives
 
-- ✅ Set up complete development environment
-- ✅ Implement database schema with all core tables
-- ✅ Build robust authentication system with JWT
-- ✅ Create user registration/login APIs
-- ✅ Establish middleware architecture
-- ✅ Configure environment management
-- ✅ Set up basic error handling and logging
+- ✅ Set up minimal development environment
+- ✅ Implement basic database schema (3 tables only)
+- ✅ Google OAuth integration via Supabase Auth UI
+- ✅ Basic AI domain generation functionality
+- ✅ Simple domain availability checking
+- ✅ Basic user session management
 
 ## Day-by-Day Breakdown
 
-### Day 1: Environment Setup & Project Foundation
+### Day 1: Minimal Setup & Core Foundation
 
 #### Morning (4 hours)
 **1. Project Initialization & Structure**
 - Initialize Node.js project with TypeScript
-- Set up project directory structure following NMC architecture guidelines
-- Configure package.json with all required dependencies
-- Set up TypeScript configuration with strict mode
-- Initialize Git repository with proper .gitignore
+- Set up basic project directory structure
+- Configure package.json with minimal dependencies
+- Set up TypeScript configuration
+- Initialize Git repository with .gitignore
 
 **Expected Directory Structure:**
 ```
 src/
 ├── controllers/          # Route handlers
-├── middleware/          # Custom middleware
-├── models/              # Database models/types
 ├── services/            # Business logic
 ├── routes/              # API route definitions
-├── utils/               # Helper functions
 ├── config/              # Configuration files
-├── database/            # Database setup & migrations
-│   └── migrations/      # SQL migration files
-├── types/               # TypeScript type definitions
-└── tests/               # Test files
+└── types/               # TypeScript type definitions
 ```
 
 **2. Core Dependencies Installation**
@@ -48,211 +41,147 @@ src/
   "dependencies": {
     "express": "^4.18.2",
     "cors": "^2.8.5",
-    "helmet": "^7.1.0",
-    "bcrypt": "^5.1.1",
-    "jsonwebtoken": "^9.0.2",
-    "zod": "^3.22.4",
     "@supabase/supabase-js": "^2.38.0",
-    "redis": "^4.6.10",
-    "winston": "^3.11.0",
-    "express-rate-limit": "^7.1.5",
-    "express-validator": "^7.0.1",
     "uuid": "^9.0.1"
   },
   "devDependencies": {
     "@types/node": "^20.8.0",
     "@types/express": "^4.17.17",
-    "@types/bcrypt": "^5.0.0",
-    "@types/jsonwebtoken": "^9.0.3",
     "@types/uuid": "^9.0.5",
     "typescript": "^5.2.0",
     "ts-node": "^10.9.1",
-    "nodemon": "^3.0.1",
-    "jest": "^29.7.0",
-    "@types/jest": "^29.5.5"
+    "nodemon": "^3.0.1"
   }
 }
 ```
 
 **3. Environment Configuration Setup**
-- Create comprehensive .env.example file
-- Set up environment variable validation using Zod
-- Configure different environments (development, staging, production)
-- Document all required environment variables
+- Create basic .env.example file
+- Set up environment variables for Supabase and AI APIs
+- Document required environment variables
 
 #### Afternoon (4 hours)
 **4. Supabase Integration Setup**
 - Create Supabase project for development
-- Configure Supabase client with proper connection settings
-- Set up connection pooling configuration
+- Configure Supabase client with basic connection settings
 - Test database connectivity
-- Configure Row Level Security (RLS) policies foundation
+- Set up basic database tables
 
 **5. Basic Express Server Configuration**
 - Set up Express application with TypeScript
-- Configure essential middleware (CORS, Helmet, JSON parsing)
-- Set up basic error handling middleware
-- Configure request logging with Winston
-- Create health check endpoint
-- Set up graceful shutdown handling
+- Configure basic middleware (CORS, JSON parsing)
+- Create simple health check endpoint
+- Set up basic error handling
 
-**6. Redis Integration**
-- Set up Redis connection for session management
-- Configure Redis client with proper error handling
-- Create Redis utility functions for session operations
-- Test Redis connectivity and basic operations
+**6. Google OAuth Setup**
+- Configure Google OAuth in Supabase Auth dashboard
+- Test basic OAuth flow
+- Set up simple user creation
 
-### Day 2: Database Schema Implementation
+### Day 2: Basic Database & AI Integration
 
 #### Morning (4 hours)
-**1. Database Schema Design Implementation**
+**1. Minimal Database Schema Implementation**
 
 **Users Table Creation:**
 ```sql
 CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     email VARCHAR(255) UNIQUE NOT NULL,
-    password_hash VARCHAR(255) NOT NULL,
-    first_name VARCHAR(100),
-    last_name VARCHAR(100),
-    subscription_tier VARCHAR(20) DEFAULT 'free' CHECK (subscription_tier IN ('free', 'mid', 'premium')),
-    subscription_status VARCHAR(20) DEFAULT 'active' CHECK (subscription_status IN ('active', 'cancelled', 'expired')),
-    stripe_customer_id VARCHAR(255),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    last_login TIMESTAMP WITH TIME ZONE
-);
-
--- Create indexes for performance
-CREATE UNIQUE INDEX idx_users_email ON users(email);
-CREATE INDEX idx_users_stripe_customer_id ON users(stripe_customer_id);
-CREATE INDEX idx_users_subscription_tier ON users(subscription_tier);
-```
-
-**Subscriptions Table:**
-```sql
-CREATE TABLE subscriptions (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    tier VARCHAR(20) NOT NULL CHECK (tier IN ('free', 'mid', 'premium')),
-    status VARCHAR(20) NOT NULL CHECK (status IN ('active', 'cancelled', 'expired')),
-    stripe_subscription_id VARCHAR(255),
-    price_paid DECIMAL(10,2),
-    billing_cycle VARCHAR(20) CHECK (billing_cycle IN ('monthly', 'yearly')),
-    current_period_start TIMESTAMP WITH TIME ZONE,
-    current_period_end TIMESTAMP WITH TIME ZONE,
+    name VARCHAR(255),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE INDEX idx_subscriptions_user_id ON subscriptions(user_id);
-CREATE INDEX idx_subscriptions_stripe_id ON subscriptions(stripe_subscription_id);
+-- Create basic indexes
+CREATE UNIQUE INDEX idx_users_email ON users(email);
 ```
 
-**2. Remaining Core Tables Implementation**
-- Generation Sessions table with JSONB for style preferences
-- Domain Suggestions table with AI reasoning storage
-- Social Handle Checks table for multi-platform tracking
-- Trademark Checks table with JSONB for matching trademarks
-- Generated Assets table for logos and color palettes
-- Usage Tracking table for tier enforcement
-- Email Deliverables table for campaign tracking
+**Generation Sessions Table:**
+```sql
+CREATE TABLE generation_sessions (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    prompt VARCHAR(500) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX idx_generation_sessions_user_id ON generation_sessions(user_id);
+```
+
+**Domain Suggestions Table:**
+```sql
+CREATE TABLE domain_suggestions (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    session_id UUID NOT NULL REFERENCES generation_sessions(id) ON DELETE CASCADE,
+    domain_name VARCHAR(255) NOT NULL,
+    is_available BOOLEAN,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX idx_domain_suggestions_session_id ON domain_suggestions(session_id);
+```
 
 #### Afternoon (4 hours)
-**3. Database Migrations System**
-- Set up Supabase migration system
-- Create migration files for all tables
-- Implement database seeding for development
-- Create migration runner utilities
-- Test migration rollback functionality
-
-**4. Database Models & Types**
-- Create TypeScript interfaces for all database entities
-- Implement Zod schemas for request/response validation
-- Create database connection utilities
-- Set up query helper functions
+**2. Basic Database Operations**
+- Create simple database connection utilities
 - Implement basic CRUD operations for User model
+- Set up simple query helper functions
+- Test basic database operations
 
-**5. Row Level Security (RLS) Setup**
-- Enable RLS on all tables
-- Create policies for user data access
-- Set up admin role policies
-- Test RLS policies with different user scenarios
-- Document security model
+**3. AI Integration Setup**
+- Set up OpenAI/Groq API client
+- Create basic AI service for domain generation
+- Implement simple prompt engineering
+- Test AI domain generation functionality
 
-### Day 3: Authentication System Implementation
+**4. Domain Availability Service**
+- Set up Domainr API integration
+- Create basic domain availability checking
+- Implement simple error handling
+- Test domain availability functionality
+
+### Day 3: Integration & Polish
 
 #### Morning (4 hours)
-**1. Password Security Implementation**
-- Set up bcrypt with 12 rounds for password hashing
-- Create password strength validation
-- Implement secure password comparison
-- Create password reset token generation
-- Set up password history tracking (prevent reuse)
+**1. API Endpoints Implementation**
+- Create domain generation endpoint
+- Implement domain availability checking endpoint
+- Set up user history endpoint
+- Create basic authentication endpoints
 
-**2. JWT Token System**
-- Configure JWT signing and verification
-- Implement access token generation (short-lived, 1 hour)
-- Set up refresh token system (long-lived, 7 days)
-- Create token blacklist system using Redis
-- Implement token validation middleware
-
-**3. Authentication Middleware**
-- Create JWT authentication middleware
-- Implement role-based access control
-- Set up rate limiting for auth endpoints
-- Create account lockout protection
-- Implement request sanitization
+**2. Frontend Integration**
+- Connect frontend to backend APIs
+- Implement basic error handling
+- Set up simple user session management
+- Test end-to-end functionality
 
 #### Afternoon (4 hours)
-**4. User Registration System**
+**3. Core API Endpoints**
 ```typescript
-// Registration flow implementation
-interface RegisterRequest {
-  email: string;
-  password: string;
-  firstName?: string;
-  lastName?: string;
-}
-
-interface AuthResponse {
-  user: {
-    id: string;
-    email: string;
-    firstName?: string;
-    lastName?: string;
-    subscriptionTier: string;
-  };
-  accessToken: string;
-  refreshToken: string;
-}
+// Core API endpoints for MVP
+POST /api/domains/generate     // Generate domain suggestions
+GET  /api/domains/check-availability  // Check domain availability
+GET  /api/domains/history      // Get user's generation history
+GET  /auth/user                // Get current user profile
 ```
 
 **Implementation includes:**
-- Email format validation and uniqueness check
-- Password strength requirements
-- User creation with default free tier
-- Welcome email queueing
-- Initial session creation
-- Response with JWT tokens
+- Basic AI domain generation
+- Simple domain availability checking
+- User session management
+- Basic error handling
+- Simple response formatting
 
-**5. User Login System**
-- Email/password authentication
-- Account lockout after failed attempts
-- Session management with Redis
-- Login attempt logging
-- Remember me functionality
-- Secure token refresh mechanism
+**4. Testing & Bug Fixes**
+- Manual testing of all features
+- Fix any integration issues
+- Ensure basic functionality works
+- Prepare for user testing
 
-**6. Core Auth API Endpoints**
-```typescript
-POST /auth/register     // User registration
-POST /auth/login        // User login
-POST /auth/logout       // User logout (token blacklist)
-POST /auth/refresh      // Refresh access token
-GET  /auth/me          // Get current user profile
-POST /auth/forgot-password  // Password reset request
-POST /auth/reset-password   // Password reset completion
-```
+**5. Documentation & Handoff**
+- Document API endpoints
+- Create basic setup guide
+- Prepare for Phase 2 development
 
 ## Technical Implementation Details
 
@@ -265,255 +194,199 @@ SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_ANON_KEY=your-supabase-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
 
-# Redis Configuration
-REDIS_URL=redis://localhost:6379
+# AI Services Configuration
+OPENAI_API_KEY=sk-...  # or GROQ_API_KEY=gsk_...
 
-# Authentication Configuration
-JWT_SECRET=your-super-secret-jwt-key-minimum-32-characters
-JWT_ACCESS_EXPIRES_IN=1h
-JWT_REFRESH_EXPIRES_IN=7d
-BCRYPT_ROUNDS=12
+# Domain Services Configuration
+DOMAINR_API_KEY=your-domainr-api-key
 
 # Application Configuration
 NODE_ENV=development
 PORT=3000
 CORS_ORIGIN=http://localhost:3000
-
-# Logging Configuration
-LOG_LEVEL=debug
 ```
 
-### 2. Middleware Stack Implementation
+### 2. Basic Express Server Setup
 
-**Security Middleware Chain:**
+**Minimal Server Configuration:**
 ```typescript
-// Security headers
-app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      scriptSrc: ["'self'"],
-      imgSrc: ["'self'", "data:", "https:"],
-    },
-  },
-}));
+import express from 'express';
+import cors from 'cors';
 
-// CORS configuration
+const app = express();
+
+// Basic middleware
 app.use(cors({
   origin: process.env.CORS_ORIGIN,
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
 }));
+app.use(express.json());
 
-// Rate limiting
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // 5 attempts per window
-  message: 'Too many login attempts, please try again later',
-  standardHeaders: true,
-  legacyHeaders: false,
+// Basic error handling
+app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+  console.error(err);
+  res.status(500).json({ error: 'Something went wrong' });
 });
 
-// Request validation middleware
-const validateRequest = (schema: ZodSchema) => {
-  return (req: Request, res: Response, next: NextFunction) => {
-    try {
-      schema.parse(req.body);
-      next();
-    } catch (error) {
-      res.status(400).json({ error: 'Invalid request data' });
-    }
-  };
-};
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok' });
+});
 ```
 
-### 3. Error Handling Strategy
+### 3. Supabase Client Configuration
 
-**Centralized Error Handler:**
-```typescript
-interface AppError extends Error {
-  statusCode: number;
-  isOperational: boolean;
-}
-
-const errorHandler = (
-  err: AppError,
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  const { statusCode = 500, message } = err;
-  
-  logger.error({
-    error: err,
-    request: {
-      method: req.method,
-      url: req.url,
-      ip: req.ip,
-    },
-  });
-
-  res.status(statusCode).json({
-    status: 'error',
-    message: process.env.NODE_ENV === 'production' 
-      ? 'Something went wrong' 
-      : message,
-  });
-};
-```
-
-### 4. Database Connection Management
-
-**Supabase Client Configuration:**
+**Basic Supabase Setup:**
 ```typescript
 import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
   process.env.SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-    db: {
-      schema: 'public',
-    },
-  }
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// Connection health check
-export const checkDatabaseConnection = async (): Promise<boolean> => {
+// Basic database operations
+export const createUser = async (email: string, name: string) => {
+  const { data, error } = await supabase
+    .from('users')
+    .insert([{ email, name }])
+    .select();
+  
+  if (error) throw error;
+  return data[0];
+};
+
+export const createGenerationSession = async (userId: string, prompt: string) => {
+  const { data, error } = await supabase
+    .from('generation_sessions')
+    .insert([{ user_id: userId, prompt }])
+    .select();
+  
+  if (error) throw error;
+  return data[0];
+};
+```
+
+### 4. Basic AI Service
+
+**Simple AI Integration:**
+```typescript
+import OpenAI from 'openai';
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
+export const generateDomains = async (prompt: string) => {
   try {
-    const { error } = await supabase.from('users').select('id').limit(1);
-    return !error;
-  } catch {
-    return false;
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "system",
+          content: "You are a domain name generator. Generate 5 creative domain names based on the user's prompt."
+        },
+        {
+          role: "user",
+          content: prompt
+        }
+      ],
+      max_tokens: 500,
+    });
+
+    return completion.choices[0].message.content;
+  } catch (error) {
+    console.error('AI generation error:', error);
+    throw new Error('Failed to generate domains');
   }
 };
 ```
 
-### 5. Logging Configuration
+## Testing Strategy (Phase 2+)
 
-**Winston Logger Setup:**
-```typescript
-const logger = winston.createLogger({
-  level: process.env.LOG_LEVEL || 'info',
-  format: winston.format.combine(
-    winston.format.timestamp(),
-    winston.format.errors({ stack: true }),
-    winston.format.json()
-  ),
-  defaultMeta: { service: 'nmc-api' },
-  transports: [
-    new winston.transports.File({ filename: 'logs/error.log', level: 'error' }),
-    new winston.transports.File({ filename: 'logs/combined.log' }),
-  ],
-});
-
-if (process.env.NODE_ENV !== 'production') {
-  logger.add(new winston.transports.Console({
-    format: winston.format.simple()
-  }));
-}
-```
-
-## Testing Strategy
-
-### 1. Unit Tests
+### 1. Unit Tests (Phase 2+)
 - Authentication service functions
-- Password hashing/verification
-- JWT token generation/validation
 - Database model operations
-- Middleware functions
+- AI service functions
+- Domain service functions
 
-### 2. Integration Tests
-- User registration flow
-- Login/logout functionality
-- Token refresh mechanism
+### 2. Integration Tests (Phase 2+)
+- User authentication flow
+- Domain generation flow
 - Database operations
 - API endpoint responses
 
-### 3. Security Tests
+### 3. Security Tests (Phase 2+)
 - SQL injection prevention
 - XSS protection
-- Rate limiting effectiveness
 - Authentication bypass attempts
-- Token security validation
+- API security validation
 
-## Deployment Preparation
+## Deployment Preparation (Phase 2+)
 
 ### 1. Development Environment
-- Docker setup for local Redis
 - Supabase local development setup
 - Environment variable validation
 - Database migration automation
 - Hot reload configuration
 
-### 2. CI/CD Foundation
+### 2. CI/CD Foundation (Phase 2+)
 - GitHub Actions workflow setup
 - Automated testing pipeline
 - Environment-specific deployments
 - Database migration validation
-- Security scanning integration
 
 ## Success Criteria
 
 ### Day 1 Completion Criteria:
 - ✅ Express server running on specified port
 - ✅ Supabase connection established
-- ✅ Redis connection functional
-- ✅ Basic middleware stack operational
+- ✅ Basic project structure set up
 - ✅ Health check endpoint responding
 - ✅ Environment configuration validated
 
 ### Day 2 Completion Criteria:
-- ✅ All database tables created and indexed
-- ✅ Migration system functional
-- ✅ RLS policies implemented and tested
-- ✅ TypeScript models defined
-- ✅ Basic CRUD operations working
-- ✅ Database connection health checks passing
+- ✅ Basic database tables created (3 tables)
+- ✅ AI service integration functional
+- ✅ Domain availability service working
+- ✅ Basic database operations functional
+- ✅ Simple error handling in place
 
 ### Day 3 Completion Criteria:
-- ✅ User registration working end-to-end
-- ✅ Login/logout functionality complete
-- ✅ JWT token system operational
-- ✅ Authentication middleware protecting routes
-- ✅ Password security measures active
-- ✅ Rate limiting functional
-- ✅ Error handling comprehensive
+- ✅ Core API endpoints working
+- ✅ Frontend integration functional
+- ✅ End-to-end domain generation working
+- ✅ Basic user session management
+- ✅ Manual testing completed
+- ✅ Ready for user feedback
 
 ## Risk Mitigation
 
 ### Technical Risks:
-1. **Database Connection Issues**: Implement connection pooling and retry logic
-2. **Redis Connectivity**: Set up Redis clustering for production readiness
-3. **JWT Security**: Use strong secrets and implement token rotation
-4. **Rate Limiting Bypass**: Implement multiple layers of protection
+1. **Database Connection Issues**: Basic error handling and retry logic
+2. **AI API Integration**: Ensure proper error handling and fallbacks
+3. **Domain API Integration**: Monitor API response times and errors
+4. **Basic Security**: Implement simple input validation
 
 ### Performance Considerations:
-1. **Database Queries**: Proper indexing and query optimization
-2. **Memory Usage**: Efficient Redis usage for sessions
-3. **Response Times**: Implement caching strategies
-4. **Concurrent Users**: Connection pooling and resource management
+1. **Database Queries**: Basic indexing for performance
+2. **AI API Performance**: Monitor response times
+3. **Response Times**: Basic error handling
+4. **Concurrent Users**: Simple connection management
 
 ## Post-Phase 1 Handoff
 
 ### Documentation Deliverables:
-- API endpoint documentation
-- Database schema documentation
-- Authentication flow diagrams
+- Basic API endpoint documentation
+- Simple database schema documentation
 - Environment setup guide
-- Troubleshooting guide
+- Basic troubleshooting guide
 
-### Code Quality Standards:
+### Code Quality Standards (Phase 2+):
 - TypeScript strict mode compliance
 - ESLint and Prettier configuration
 - Test coverage > 80%
 - Security vulnerability scanning
 - Performance benchmarking
 
-This Phase 1 implementation establishes a solid foundation for the remaining development phases, ensuring security, scalability, and maintainability from the ground up.
+This Phase 1 implementation establishes a minimal viable product that can be quickly deployed and tested with users, providing a foundation for iterative development based on user feedback and needs.

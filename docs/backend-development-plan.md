@@ -10,14 +10,10 @@ This document outlines the comprehensive backend development plan for an AI-powe
 
 - **Backend Framework**: Node.js with Express.js
 - **Database**: PostgreSQL via Supabase
-- **Caching**: Redis for session management and API response caching
-- **Authentication**: JWT-based with email/password authentication
-- **Payment Processing**: Stripe for subscription management
-- **Email Service**: SendGrid or Mailgun for transactional emails
-- **File Storage**: Supabase Storage for generated PDFs and assets
-- **Background Jobs**: Redis Bull Queue for asynchronous processing
+- **Authentication**: Supabase Auth with Google OAuth only
+- **AI Services**: OpenAI/Groq API for domain generation
+- **Domain Services**: Single registrar API for availability checking
 - **Hosting**: Vercel/Railway for Node.js backend
-- **Monitoring**: Sentry for error tracking, DataDog for performance monitoring
 
 ### Supabase Integration Benefits
 
@@ -35,68 +31,40 @@ This document outlines the comprehensive backend development plan for an AI-powe
 ```
 Frontend (React/Next.js)
     ↓
-API Gateway/Load Balancer
-    ↓
 Backend Services (Node.js/Express)
     ↓
-┌─ User Service ─┐ ┌─ AI Service ─┐ ┌─ Domain Service ─┐ ┌─ Branding Service ─┐
-│ Auth/Profiles  │ │ GPT/Claude    │ │ Availability     │ │ Social/Trademark  │
-│ Subscriptions  │ │ Name Gen      │ │ Registrar APIs   │ │ Logo/Colors       │
-└────────────────┘ └───────────────┘ └──────────────────┘ └───────────────────┘
-    ↓                    ↓                    ↓                    ↓
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                        Supabase PostgreSQL Database                         │
-│  Users | Subscriptions | Generated_Names | Domain_Checks | Social_Checks    │
-│  Trademark_Checks | Generated_Assets | Usage_Tracking | Email_Deliverables  │
-└─────────────────────────────────────────────────────────────────────────────┘
-    ↓                    ↓                    ↓                    ↓
-┌─ Redis Cache ─┐ ┌─ Background Jobs ─┐ ┌─ Supabase Storage ─┐ ┌─ External APIs ─┐
-│ Sessions      │ │ Email Processing  │ │ PDF Reports        │ │ AI Models       │
-│ API Responses │ │ Report Generation │ │ Logo Assets        │ │ Domain APIs     │
-└───────────────┘ └───────────────────┘ └────────────────────┘ └─────────────────┘
+┌─ User Service ─┐ ┌─ AI Service ─┐ ┌─ Domain Service ─┐
+│ Auth/Profiles  │ │ GPT/Claude    │ │ Availability     │
+│ Basic Profile  │ │ Name Gen      │ │ Single Registrar │
+└────────────────┘ └───────────────┘ └──────────────────┘
+    ↓                    ↓                    ↓
+┌─────────────────────────────────────────────────────────┐
+│                Supabase PostgreSQL Database             │
+│  Users | Generation_Sessions | Domain_Suggestions      │
+└─────────────────────────────────────────────────────────┘
+    ↓                    ↓                    ↓
+┌─ External APIs ─┐
+│ AI Models       │
+│ Domain APIs     │
+└─────────────────┘
 ```
 
 ## 2. Database Schema Design
 
-### Core Tables Structure
+### Core Tables Structure (Phase 1 - MVP)
 
 #### Users Table
 
 - **id**: UUID (Primary Key)
 - **email**: VARCHAR (Unique, Not Null)
-- **password_hash**: VARCHAR (Not Null)
-- **first_name**: VARCHAR
-- **last_name**: VARCHAR
-- **subscription_tier**: VARCHAR (Default: 'free') - Values: 'free', 'mid', 'premium'
-- **subscription_status**: VARCHAR (Default: 'active') - Values: 'active', 'cancelled', 'expired'
-- **stripe_customer_id**: VARCHAR
-- **created_at**: TIMESTAMP
-- **updated_at**: TIMESTAMP
-- **last_login**: TIMESTAMP
-
-#### Subscriptions Table
-
-- **id**: UUID (Primary Key)
-- **user_id**: UUID (Foreign Key to users.id)
-- **tier**: VARCHAR (Not Null) - Values: 'free', 'mid', 'premium'
-- **status**: VARCHAR (Not Null) - Values: 'active', 'cancelled', 'expired'
-- **stripe_subscription_id**: VARCHAR
-- **price_paid**: DECIMAL
-- **billing_cycle**: VARCHAR - Values: 'monthly', 'yearly'
-- **current_period_start**: TIMESTAMP
-- **current_period_end**: TIMESTAMP
+- **name**: VARCHAR
 - **created_at**: TIMESTAMP
 
 #### Generation Sessions Table
 
 - **id**: UUID (Primary Key)
 - **user_id**: UUID (Foreign Key to users.id)
-- **business_niche**: VARCHAR
-- **brand_tone**: VARCHAR
-- **style_preferences**: JSONB
-- **ai_model_used**: VARCHAR
-- **tokens_used**: INTEGER
-- **status**: VARCHAR - Values: 'pending', 'completed', 'failed'
+- **prompt**: VARCHAR
 - **created_at**: TIMESTAMP
 
 #### Domain Suggestions Table
@@ -104,318 +72,148 @@ Backend Services (Node.js/Express)
 - **id**: UUID (Primary Key)
 - **session_id**: UUID (Foreign Key to generation_sessions.id)
 - **domain_name**: VARCHAR (Not Null)
-- **tld**: VARCHAR (Not Null)
 - **is_available**: BOOLEAN
-- **registrar_checked**: VARCHAR
-- **price**: DECIMAL
-- **ai_reasoning**: TEXT
 - **created_at**: TIMESTAMP
 
-#### Social Handle Checks Table
-
-- **id**: UUID (Primary Key)
-- **session_id**: UUID (Foreign Key to generation_sessions.id)
-- **handle_name**: VARCHAR (Not Null)
-- **platform**: VARCHAR (Not Null) - Values: 'instagram', 'twitter', 'facebook', 'tiktok', 'linkedin'
-- **is_available**: BOOLEAN
-- **checked_at**: TIMESTAMP
-
-#### Trademark Checks Table
-
-- **id**: UUID (Primary Key)
-- **session_id**: UUID (Foreign Key to generation_sessions.id)
-- **name**: VARCHAR (Not Null)
-- **region**: VARCHAR (Not Null) - Values: 'USPTO', 'EUIPO'
-- **risk_level**: VARCHAR - Values: 'low', 'medium', 'high'
-- **matching_trademarks**: JSONB
-- **checked_at**: TIMESTAMP
-
-#### Generated Assets Table
-
-- **id**: UUID (Primary Key)
-- **session_id**: UUID (Foreign Key to generation_sessions.id)
-- **asset_type**: VARCHAR (Not Null) - Values: 'logo', 'color_palette'
-- **asset_data**: JSONB - Contains URLs, hex codes, metadata
-- **generation_cost**: DECIMAL
-- **created_at**: TIMESTAMP
-
-#### Usage Tracking Table
-
-- **id**: UUID (Primary Key)
-- **user_id**: UUID (Foreign Key to users.id)
-- **resource_type**: VARCHAR - Values: 'ai_tokens', 'logo_generations', 'social_checks', 'trademark_checks'
-- **usage_count**: INTEGER
-- **period_start**: TIMESTAMP
-- **period_end**: TIMESTAMP
-- **created_at**: TIMESTAMP
-
-#### Email Deliverables Table
-
-- **id**: UUID (Primary Key)
-- **user_id**: UUID (Foreign Key to users.id)
-- **session_id**: UUID (Foreign Key to generation_sessions.id)
-- **email_type**: VARCHAR - Values: 'free_5_domains', 'mid_tier_report', 'premium_pdf'
-- **sent_at**: TIMESTAMP
-- **opened_at**: TIMESTAMP
-- **clicked_at**: TIMESTAMP
-
-### Database Indexes
+### Database Indexes (Basic)
 
 - **users.email**: Unique index for fast login lookups
-- **users.stripe_customer_id**: Index for payment processing
 - **generation_sessions.user_id**: Index for user history queries
 - **domain_suggestions.session_id**: Index for session-based queries
-- **usage_tracking.user_id + resource_type + period_start**: Composite index for usage queries
+
+### Future Tables (Phase 2+)
+
+The following tables will be added in later phases:
+- **Subscriptions Table**: Payment and tier management
+- **Social Handle Checks Table**: Social media availability
+- **Trademark Checks Table**: Legal risk assessment
+- **Generated Assets Table**: Logos and color palettes
+- **Usage Tracking Table**: Tier enforcement and analytics
+- **Email Deliverables Table**: Email automation tracking
 
 ## 3. API Integration Strategy
 
-### AI Models Configuration
+### AI Models Configuration (Phase 1 - MVP)
 
-#### Free Tier AI Configuration
+#### Basic AI Configuration
 
-- **Model**: LLaMA-3-70B (via Groq)
+- **Model**: GPT-4o-mini (OpenAI) or LLaMA-3-70B (via Groq)
 - **Max Tokens**: 1,000 per session
-- **Cost per 1K tokens**: $0.00138
+- **Cost per 1K tokens**: $0.00026 (GPT-4o-mini) or $0.00138 (LLaMA-3)
 - **Use Case**: Basic domain name suggestions
 
-#### Mid Tier AI Configuration
+### Domain Registrar APIs (Phase 1 - MVP)
 
-- **Model**: GPT-4o-mini (OpenAI)
-- **Max Tokens**: 5,000 per session
-- **Cost per 1K tokens**: $0.00026
-- **Use Case**: Enhanced domain suggestions with reasoning
+#### Single Registrar Integration
 
-#### Premium Tier AI Configuration
-
-- **Model**: GPT-4o (OpenAI)
-- **Max Tokens**: 10,000 per session
-- **Cost per 1K tokens**: $0.00438
-- **Use Case**: Comprehensive branding analysis and suggestions
-
-### Domain Registrar APIs
-
-#### Domainr API Integration
-
+- **Provider**: Domainr API (free tier: 10,000 queries/month)
 - **Endpoint**: https://domainr.p.rapidapi.com/v2
-- **Free Tier Limit**: 10,000 queries per month
-- **Overage Cost**: $0.002 per additional query
-- **Use Case**: Primary domain availability checking
+- **Use Case**: Domain availability checking
+- **Cost**: Free initially, $0.002 per additional query
 
-#### Namecheap API Integration
+### Future API Integrations (Phase 2+)
 
-- **Endpoint**: https://api.namecheap.com/xml.response
-- **Rate Limit**: 50 requests per minute
-- **Affiliate Commission**: 20% on domain sales
-- **Use Case**: Secondary domain checking and affiliate sales
-
-#### GoDaddy API Integration (Alternative)
-
-- **Endpoint**: GoDaddy Reseller API
-- **Wholesale Pricing**: ~$8 per .com domain
-- **Affiliate Commission**: 10% on sales
-- **Use Case**: Backup registrar option
-
-### Third-Party Service APIs
-
-#### Social Media Handle Checking
-
-- **Primary Provider**: Apify "All-in-One Username Checker"
-- **Cost**: $0.15 per comprehensive check (85+ platforms)
-- **Alternative**: SocialLinks.io API
-- **Fallback**: Direct HTTP checks to major platforms
-
-#### Trademark Verification
-
-- **USPTO API**: Free public API access
-- **EUIPO API**: Free public API access
-- **Use Case**: Basic trademark risk assessment
-- **Implementation**: Direct API calls with rate limiting
-
-#### Color Palette Generation
-
-- **Provider**: Colormind.io API
-- **Cost**: Free (unlimited usage)
-- **Alternative**: TheColorAPI (rule-based, also free)
-- **Use Case**: Brand color scheme suggestions
-
-#### Logo Generation
-
-- **Provider**: DALL-E 3 (OpenAI)
-- **Cost**: $0.02 per 1024x1024 image
-- **Usage Rights**: Full commercial rights granted
-- **Use Case**: AI-generated logo concepts
+The following integrations will be added in later phases:
+- **Multiple AI Models**: Tier-based model selection
+- **Multiple Registrars**: Namecheap, GoDaddy for redundancy
+- **Social Media APIs**: Handle availability checking
+- **Trademark APIs**: Legal risk assessment
+- **Logo Generation**: DALL-E 3 integration
+- **Color Palette APIs**: Brand color suggestions
 
 ## 4. Core Backend Services Architecture
 
-### Authentication Service
+### Authentication Service (Phase 1 - MVP)
 
 **Responsibilities**:
 
-- User registration and login
-- JWT token generation and validation
-- Password hashing and verification
-- Session management
-- Password reset functionality
+- User registration and login via Google OAuth
+- Basic user profile management
+- Session management with Supabase
 
 **Key Features**:
 
-- Email/password authentication
-- JWT-based stateless sessions
-- Password strength validation
-- Account lockout protection
-- Email verification (optional)
+- Google OAuth authentication via Supabase Auth UI
+- Automatic user profile creation
+- Basic session management
 
-### AI Generation Service
+### AI Generation Service (Phase 1 - MVP)
 
 **Responsibilities**:
 
 - Domain name generation using AI models
-- Prompt engineering and optimization
-- Token usage tracking and billing
+- Basic prompt engineering
 - Response parsing and validation
-- Model selection based on tier
 
 **Key Features**:
 
-- Tier-based model selection
-- Intelligent prompt building
-- Usage cost tracking
-- Response quality validation
-- Fallback model handling
+- Single AI model integration
+- Basic prompt building
+- Simple response validation
 
-### Domain Service
+### Domain Service (Phase 1 - MVP)
 
 **Responsibilities**:
 
 - Domain availability checking
-- Registrar API integration
-- Affiliate link generation
-- Domain pricing information
-- Caching of availability results
+- Single registrar API integration
+- Basic error handling
 
 **Key Features**:
 
-- Multi-registrar availability checking
-- Intelligent caching (24-hour TTL)
-- Affiliate commission tracking
-- Bulk domain checking
-- Error handling and retries
+- Single registrar availability checking
+- Basic error handling and retries
 
-### Social Media Service
+### Future Services (Phase 2+)
 
-**Responsibilities**:
-
-- Social handle availability checking
-- Multi-platform verification
-- Availability result caching
-- Platform-specific URL generation
-
-**Key Features**:
-
-- Support for 85+ social platforms
-- Intelligent rate limiting
-- Result caching (1-hour TTL)
-- Platform-specific error handling
-
-### Payment Service
-
-**Responsibilities**:
-
-- Stripe integration
-- Subscription management
-- Payment processing
-- Webhook handling
-- Billing cycle management
-
-**Key Features**:
-
-- Tier-based subscription plans
-- Automatic billing
-- Payment method management
-- Subscription upgrades/downgrades
-- Made With Chat credit integration
-
-### Email Service
-
-**Responsibilities**:
-
-- Transactional email sending
-- Email template management
-- Delivery tracking
-- Bounce handling
-- Email automation workflows
-
-**Key Features**:
-
-- Welcome email sequences
-- Domain suggestion delivery
-- Report generation and delivery
-- Subscription notifications
-- Made With Chat integration emails
+The following services will be added in later phases:
+- **Social Media Service**: Handle availability checking
+- **Payment Service**: Stripe integration and subscription management
+- **Email Service**: Transactional emails and automation
+- **Advanced AI Service**: Tier-based model selection and usage tracking
+- **Advanced Domain Service**: Multi-registrar support and caching
 
 ## 5. API Endpoints Design
 
-### Authentication Endpoints
+### Authentication Endpoints (Phase 1 - MVP)
 
-- **POST /auth/register** - User registration
-- **POST /auth/login** - User login
-- **POST /auth/logout** - User logout
-- **GET /auth/me** - Get current user profile
-- **POST /auth/forgot-password** - Password reset request
-- **POST /auth/reset-password** - Password reset completion
+- **GET /auth/google** - Initiate Google OAuth flow
+- **GET /auth/google/callback** - Google OAuth callback
+- **POST /auth/signout** - User logout via Supabase
+- **GET /auth/user** - Get current user profile
 
-### Domain Generation Endpoints
+### Domain Generation Endpoints (Phase 1 - MVP)
 
 - **POST /api/domains/generate** - Generate domain suggestions
 - **GET /api/domains/check-availability** - Check domain availability
-- **POST /api/domains/save-favorites** - Save favorite domains
 - **GET /api/domains/history** - Get user's generation history
 
-### Branding Services Endpoints
+### Future Endpoints (Phase 2+)
 
-- **POST /api/branding/social-check** - Check social handle availability
-- **POST /api/branding/trademark-check** - Check trademark availability
-- **POST /api/branding/generate-logo** - Generate AI logos
-- **GET /api/branding/color-palette** - Generate color palettes
-
-### User Management Endpoints
-
-- **GET /api/user/profile** - Get user profile
-- **PUT /api/user/profile** - Update user profile
-- **GET /api/user/subscription** - Get subscription details
-- **PUT /api/user/subscription** - Update subscription
-- **GET /api/user/usage** - Get current usage statistics
-
-### Report Generation Endpoints
-
-- **POST /api/reports/generate** - Generate branded report
-- **GET /api/reports/:reportId/download** - Download report PDF
-- **POST /api/reports/email** - Email report to user
-
-### Admin Endpoints
-
-- **GET /api/admin/users** - List all users
-- **GET /api/admin/analytics** - Get platform analytics
-- **POST /api/admin/send-email** - Send manual emails
-- **GET /api/admin/revenue** - Revenue analytics
+The following endpoints will be added in later phases:
+- **Branding Services**: Social checks, trademark checks, logo generation
+- **User Management**: Profile updates, subscription management
+- **Report Generation**: PDF reports and email delivery
+- **Admin Dashboard**: User management and analytics
 
 ## 6. Background Job Processing
 
-### Queue System Architecture
+### Queue System Architecture (Phase 2+)
 
+Background job processing will be implemented in Phase 2+ with the following features:
 - **Email Queue**: Handles all email sending tasks
 - **Report Queue**: Manages PDF report generation
 - **Domain Check Queue**: Processes bulk domain availability checks
 - **Analytics Queue**: Handles usage tracking and analytics
 
-### Job Types and Processing
+### Job Types and Processing (Phase 2+)
 
 - **Welcome Email Job**: Sends welcome email with 5 free domains
 - **Report Generation Job**: Creates branded PDF reports
 - **Usage Tracking Job**: Updates usage statistics
 - **Cleanup Job**: Archives old data and cleans up temporary files
 
-### Job Configuration
+### Job Configuration (Phase 2+)
 
 - **Retry Logic**: Exponential backoff with 3 retries
 - **Dead Letter Queue**: Failed jobs moved to DLQ for manual review
@@ -424,7 +222,9 @@ Backend Services (Node.js/Express)
 
 ## 7. Rate Limiting and Usage Enforcement
 
-### Tier-Based Usage Limits
+### Tier-Based Usage Limits (Phase 2+)
+
+Usage limits and tier enforcement will be implemented in Phase 2+ with the following structure:
 
 #### Free Tier Limits
 
@@ -450,104 +250,89 @@ Backend Services (Node.js/Express)
 - **Trademark Checks**: Unlimited
 - **Color Palettes**: Unlimited
 
-### Rate Limiting Implementation
+### Rate Limiting Implementation (Phase 2+)
 
-- **API Rate Limiting**: Redis-based rate limiting
+- **API Rate Limiting**: Implemented in Phase 2+ for production scaling
 - **User-Based Limits**: Per-user usage tracking
 - **IP-Based Limits**: Protection against abuse
 - **Tier Enforcement**: Middleware for usage validation
 
 ## 8. Development Timeline
 
-### Phase 1: Core Infrastructure (Days 1-3)
+### Phase 1: MVP Core (Days 1-3)
 
 **Objectives**:
 
-- Set up development environment
-- Database schema implementation
-- Basic authentication system
-- User registration/login APIs
-- JWT middleware implementation
+- Set up basic development environment
+- Implement minimal database schema (3 tables)
+- Google OAuth integration via Supabase Auth UI
+- Basic AI domain generation
+- Simple domain availability checking
 
 **Deliverables**:
 
-- Working authentication system
-- Database with core tables
-- Basic user management APIs
-- Development environment setup
-
-### Phase 2: AI Integration (Days 4-6)
-
-**Objectives**:
-
-- OpenAI/Groq API integration
-- Domain name generation service
-- Prompt engineering and optimization
-- Usage tracking implementation
-
-**Deliverables**:
-
-- AI-powered domain generation
-- Token usage tracking
-- Prompt optimization
-- Basic generation API
-
-### Phase 3: Domain Services (Days 7-9)
-
-**Objectives**:
-
+- Working MVP with Google OAuth
+- Basic database with 3 core tables
+- AI domain generation functionality
 - Domain availability checking
-- Registrar API integration
-- Affiliate link generation
-- Caching layer implementation
+- Simple user session management
+
+### Phase 2: Enhanced Features (Days 4-6)
+
+**Objectives**:
+
+- Advanced AI prompt engineering
+- Multiple AI model support
+- Usage tracking and analytics
+- Basic error handling and logging
 
 **Deliverables**:
 
-- Multi-registrar domain checking
-- Affiliate link generation
-- Caching system
-- Domain availability API
+- Enhanced AI domain generation
+- Usage tracking system
+- Basic analytics
+- Improved error handling
 
-### Phase 4: Payment & Subscriptions (Days 10-12)
+### Phase 3: Payment & Subscriptions (Days 7-9)
 
 **Objectives**:
 
 - Stripe integration
 - Subscription management
-- Webhook handling
-- Tier enforcement middleware
+- Tier-based access control
+- Usage limits enforcement
 
 **Deliverables**:
 
 - Working payment system
 - Subscription management
-- Tier-based access control
-- Made With Chat credit integration
+- Tier-based features
+- Usage enforcement
 
-### Phase 5: Additional Services (Days 13-15)
+### Phase 4: Advanced Services (Days 10-12)
 
 **Objectives**:
 
 - Social media handle checking
-- Trademark verification APIs
+- Trademark verification
+- Logo generation
 - Color palette generation
-- Logo generation integration
 
 **Deliverables**:
 
 - Social media checking service
 - Trademark verification
-- Color palette generation
-- Logo generation service
+- Logo generation
+- Color palette service
 
-### Phase 6: Email & Reports (Days 16-18)
+### Phase 5: Email & Reports (Days 13-15)
 
 **Objectives**:
 
 - Email service integration
 - PDF report generation
 - Background job processing
-- Email automation workflows
+- Email automation
 
 **Deliverables**:
 
@@ -556,12 +341,12 @@ Backend Services (Node.js/Express)
 - Background job processing
 - Email templates
 
-### Phase 7: Admin & Analytics (Days 19-21)
+### Phase 6: Admin & Analytics (Days 16-18)
 
 **Objectives**:
 
 - Admin dashboard APIs
-- Usage analytics
+- Advanced analytics
 - Revenue tracking
 - User management tools
 
@@ -572,11 +357,11 @@ Backend Services (Node.js/Express)
 - Revenue tracking
 - User management tools
 
-### Phase 8: Testing & Optimization (Days 22-24)
+### Phase 7: Testing & Optimization (Days 19-21)
 
 **Objectives**:
 
-- Comprehensive API testing
+- Comprehensive testing
 - Performance optimization
 - Security audit
 - Load testing
@@ -588,6 +373,22 @@ Backend Services (Node.js/Express)
 - Security improvements
 - Load test results
 
+### Phase 8: Production Readiness (Days 22-24)
+
+**Objectives**:
+
+- Production deployment
+- Monitoring setup
+- Documentation
+- Final testing
+
+**Deliverables**:
+
+- Production-ready system
+- Monitoring and alerting
+- Complete documentation
+- Final testing and validation
+
 ## 9. Environment Configuration
 
 ### Required Environment Variables
@@ -598,15 +399,16 @@ Backend Services (Node.js/Express)
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_ANON_KEY=your-supabase-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
-REDIS_URL=redis://username:password@host:port
+# REDIS_URL=redis://username:password@host:port  # For production scaling
 ```
 
 #### Authentication Configuration
 
 ```
-JWT_SECRET=your-super-secret-jwt-key
-JWT_EXPIRES_IN=7d
-BCRYPT_ROUNDS=12
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_ANON_KEY=your-supabase-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
+# Supabase Auth handles JWT secrets and password hashing automatically
 ```
 
 #### AI Services Configuration
@@ -677,7 +479,7 @@ SENTRY_DSN=https://...
 
 ### API Cost Management
 
-- **Aggressive Caching**: 24-hour cache for domain availability results
+- **Aggressive Caching**: 24-hour cache for domain availability results (in-memory initially)
 - **Batch Processing**: Group social media checks to reduce API calls
 - **Free Tier Utilization**: Use free APIs for trademark checking
 - **Usage Monitoring**: Real-time alerts for unusual usage patterns
@@ -694,9 +496,9 @@ SENTRY_DSN=https://...
 
 ### Background Processing Optimization
 
-- **Job Queuing**: Queue non-critical tasks
+- **Job Queuing**: Simple in-memory queue initially, Redis Bull Queue for production
 - **Retry Logic**: Implement exponential backoff for failed jobs
-- **Dead Letter Queues**: Handle permanently failed jobs
+- **Dead Letter Queues**: Handle permanently failed jobs (Redis-based in production)
 - **Job Prioritization**: Prioritize paid user jobs
 - **Resource Scaling**: Scale workers based on queue size
 
@@ -705,18 +507,19 @@ SENTRY_DSN=https://...
 - **Auto-scaling**: Scale based on demand via Vercel/Railway
 - **CDN Usage**: Supabase CDN for static assets
 - **Compression**: Enable gzip compression
-- **Caching Layers**: Redis + Supabase caching
+- **Caching Layers**: In-memory + Supabase caching initially, Redis for production
 - **Resource Monitoring**: Monitor and optimize resource usage
 
 ## 11. Security Considerations
 
 ### Authentication Security
 
-- **Password Hashing**: Use bcrypt with 12 rounds
-- **JWT Security**: Short-lived tokens with refresh mechanism
-- **Rate Limiting**: Prevent brute force attacks
-- **Account Lockout**: Temporary lockout after failed attempts
-- **Input Validation**: Sanitize all user inputs
+- **OAuth Security**: Google OAuth 2.0 with secure token handling
+- **JWT Security**: Supabase manages token lifecycle and refresh
+- **Rate Limiting**: Implemented in Phase 2+ for production scaling
+- **Account Protection**: Google account security + Supabase session management
+- **Input Validation**: Supabase validation + custom sanitization
+- **Row Level Security**: Supabase RLS policies for data access
 
 ### API Security
 
@@ -765,7 +568,7 @@ SENTRY_DSN=https://...
 
 ### Development Environment
 
-- **Local Development**: Docker containers for Redis, Supabase CLI for local database
+- **Local Development**: Supabase CLI for local database, in-memory caching
 - **Staging Environment**: Supabase staging project for testing
 - **CI/CD Pipeline**: Automated testing and deployment via Vercel/Railway
 - **Database Migrations**: Supabase migrations for schema updates
@@ -787,7 +590,41 @@ SENTRY_DSN=https://...
 - **Monitoring Stack**: Sentry, DataDog
 - **Logging Stack**: Supabase logs + external logging service
 
-## 14. Future Enhancements
+## 14. Redis Migration Strategy
+
+### When to Migrate to Redis
+
+**Migration Triggers:**
+- User base exceeds 1,000 active users
+- Memory usage consistently above 80%
+- Need for distributed session management
+- Background job processing requirements
+- Performance bottlenecks in caching
+
+**Migration Plan:**
+1. **Phase 1**: Set up Redis infrastructure alongside existing system
+2. **Phase 2**: Implement Redis-based session management
+3. **Phase 3**: Migrate caching layer to Redis
+4. **Phase 4**: Implement Redis Bull Queue for background jobs
+5. **Phase 5**: Remove in-memory implementations
+
+**Redis Configuration:**
+- **Session Storage**: Redis with TTL for automatic cleanup
+- **Caching Layer**: Redis with 24-hour TTL for domain availability
+- **Rate Limiting**: Redis-based rate limiting for distributed systems
+- **Background Jobs**: Redis Bull Queue with retry logic
+- **Token Blacklist**: Redis with automatic expiration
+
+## 15. Future Authentication Enhancements
+
+### Phase 2+ Authentication Features
+
+- **Email/Password Authentication**: Traditional email/password signup and login
+- **Password Reset Flow**: Email-based password reset functionality
+- **Additional Social Providers**: GitHub, Facebook, Twitter OAuth integration
+- **Two-Factor Authentication**: SMS/Email 2FA for enhanced security
+- **Account Linking**: Link multiple social accounts to single user
+- **Rate Limiting**: API rate limiting and abuse protection
 
 ### Phase 2 Features
 
