@@ -1,0 +1,276 @@
+---
+description: NMC AI Domain Name Tool project guidelines and patterns
+globs: src/**/* apps/**/* packages/**/* components/**/* lib/**/* utils/**/*
+alwaysApply: true
+---
+
+## NMC AI Domain Name Tool Architecture Guidelines
+
+0. **Think hard before making changes**: Before adding new code, think hard about the problem and implement meticulously following established patterns.
+
+1. **Project Structure Understanding**:
+   - **Frontend**: Next.js application with React/TypeScript
+   - **Backend**: Node.js/Express API with Supabase PostgreSQL
+   - **Database**: Supabase managed PostgreSQL with RLS
+   - **Authentication**: JWT-based with email/password
+   - **Payments**: Stripe subscription management
+   - **AI Services**: OpenAI GPT-4o, GPT-4o-mini, LLaMA-3 integration
+   - **Third-Party APIs**: Domain registrars, social media checkers, trademark APIs
+
+2. **Tier-Based Architecture**:
+   - **Free Tier**: Basic domain suggestions using LLaMA-3 (2 generations/month)
+   - **Mid Tier ($5)**: Enhanced suggestions with GPT-4o-mini (100 generations/month)
+   - **Premium Tier ($10)**: Full feature set with GPT-4o (unlimited generations)
+   - All tiers maintain 90%+ gross margins through intelligent cost management
+
+3. **AI Service Integration Pattern**:
+   - Use tier-appropriate AI models to maintain cost structure
+   - Implement usage tracking and enforcement middleware
+   - Cache AI responses where appropriate (24-hour TTL for domain availability)
+   - Monitor token usage for cost optimization
+   - Validate all AI responses against expected schemas
+
+4. **Database Schema Standards**:
+   - Use UUIDs for all primary keys
+   - Include `created_at`, `updated_at` timestamps on all tables
+   - Use JSONB for flexible data storage (style preferences, metadata)
+   - Implement proper foreign key relationships
+   - Create strategic indexes for performance optimization
+
+5. **API Response Formats**:
+   - Success: `{ status: 'success', data: T }`
+   - Error: `{ error: string, details?: any }`
+   - Always include proper HTTP status codes
+   - Use Zod schemas for request/response validation
+
+6. **Cost Optimization Discipline**:
+   - **Critical**: Monitor per-user costs in real-time
+   - Cache expensive API calls (domain availability, social checks)
+   - Use tier-based rate limiting to prevent abuse
+   - Implement usage alerts for cost spikes
+   - Batch API calls where possible to reduce costs
+
+7. **Domain Service Integration**:
+   - Primary: Domainr API (10k free queries/month)
+   - Secondary: Namecheap API (affiliate integration)
+   - Fallback: GoDaddy Reseller API
+   - Always use affiliate links for monetization
+   - Cache availability results with 24-hour TTL
+
+8. **Made With Chat Integration**:
+   - Include MWC credits in paid tier benefits ($5 credit for mid, $15 for premium)
+   - Implement webhook integration for credit distribution
+   - Track conversion funnel from NMC to MWC ecosystem
+   - Use separate API keys for MWC integration
+
+9. **Security Implementation**:
+   - Use bcrypt with 12 rounds for password hashing
+   - Implement JWT with refresh token mechanism
+   - Rate limit all API endpoints (tier-based limits)
+   - Validate all user inputs with Zod schemas
+   - Use Supabase RLS policies for data access control
+
+10. **Background Job Processing**:
+    - Use Redis Bull Queue for async processing
+    - Email queue for transactional emails
+    - Report generation queue for PDF creation
+    - Usage tracking and analytics processing
+    - Implement exponential backoff retry logic
+
+## Database Guidelines (Supabase)
+
+1. **Schema Management**:
+   - All migrations in `src/database/migrations/`
+   - Use descriptive names: `001_create_users_table.sql`
+   - Always use `IF NOT EXISTS` clauses
+   - Test locally before production deployment
+
+2. **Core Tables Structure**:
+   - **users**: Authentication and profile data
+   - **subscriptions**: Stripe subscription management
+   - **generation_sessions**: AI interaction tracking
+   - **domain_suggestions**: Generated domain names with reasoning
+   - **usage_tracking**: Cost monitoring and tier enforcement
+   - **email_deliverables**: Email campaign tracking
+
+3. **Data Relationships**:
+   - Users → Subscriptions (1:many for subscription history)
+   - Users → Generation Sessions (1:many for usage tracking)
+   - Sessions → Domain Suggestions (1:many for results)
+   - Sessions → Generated Assets (1:many for logos/colors)
+
+4. **Performance Optimization**:
+   - Index frequently queried fields (user_id, email, session_id)
+   - Use composite indexes for usage tracking queries
+   - Implement data archiving after 90 days
+   - Monitor query performance with Supabase analytics
+
+5. **RLS Policies**:
+   - Users can only access their own data
+   - Admin role for management dashboard access
+   - Public read access for domain availability cache
+   - Secure API key access patterns
+
+## Backend API Guidelines (Node.js/Express)
+
+1. **API Endpoint Structure**:
+   - Authentication: `/auth/*` (register, login, profile)
+   - Domain Generation: `/api/domains/*` (generate, check, favorites)
+   - Branding Services: `/api/branding/*` (social, trademark, logos, colors)
+   - User Management: `/api/user/*` (profile, subscription, usage)
+   - Reports: `/api/reports/*` (generate, download, email)
+   - Admin: `/api/admin/*` (analytics, user management)
+
+2. **Middleware Stack**:
+   - CORS configuration for frontend origin
+   - JWT authentication middleware
+   - Request validation (Zod schemas)
+   - Rate limiting (tier-based)
+   - Usage tracking and cost monitoring
+   - Error handling with proper logging
+
+3. **Service Architecture**:
+   - **AuthService**: User authentication and session management
+   - **AIService**: LLM integration with tier-based model selection
+   - **DomainService**: Multi-registrar availability checking
+   - **BrandingService**: Social handles, trademarks, logos, colors
+   - **PaymentService**: Stripe subscription management
+   - **EmailService**: Transactional email automation
+   - **ReportService**: PDF generation and delivery
+
+4. **Error Handling Pattern**:
+   ```typescript
+   export async function generateDomains(req: Request, res: Response) {
+     try {
+       const { businessNiche, brandTone } = req.body;
+       const user = req.user; // From JWT middleware
+       
+       // Check usage limits
+       await enforceUsageLimits(user);
+       
+       const domains = await aiService.generateDomains({
+         niche: businessNiche,
+         tone: brandTone,
+         tier: user.subscription_tier
+       });
+       
+       return res.json({
+         status: 'success',
+         data: domains
+       });
+     } catch (error) {
+       logger.error('Domain generation failed', { error, userId: req.user?.id });
+       return res.status(500).json({
+         error: 'Failed to generate domains'
+       });
+     }
+   }
+   ```
+
+5. **Third-Party API Integration**:
+   - Implement retry logic with exponential backoff
+   - Use circuit breaker pattern for external services
+   - Cache responses aggressively to reduce costs
+   - Monitor API usage and costs in real-time
+   - Implement fallback strategies for critical services
+
+## Frontend Guidelines (React/Next.js)
+
+1. **Application Structure**:
+   - Landing page with marketing content and sample domains
+   - User dashboard with generation history
+   - Domain generation flow with step-by-step UI
+   - Subscription management and billing pages
+   - Report viewing and download interface
+
+2. **Component Architecture**:
+   - Use TypeScript for all components
+   - Implement proper prop validation
+   - Create reusable UI components for branding elements
+   - Use consistent styling with Tailwind CSS
+   - Implement loading states for all async operations
+
+3. **State Management**:
+   - Use React hooks for local component state
+   - Context API for user authentication state
+   - SWR or React Query for server state management
+   - Local storage for non-sensitive user preferences
+
+4. **Form Handling**:
+   - Use react-hook-form for form management
+   - Implement client-side validation with Zod
+   - Show real-time validation feedback
+   - Handle loading states during submission
+
+5. **User Experience Patterns**:
+   - Progressive disclosure for advanced features
+   - Clear tier differentiation in UI
+   - Instant feedback for user actions
+   - Onboarding flow for new users
+   - Upsell prompts for tier upgrades
+
+6. **SEO & Performance**:
+   - Server-side rendering for marketing pages
+   - Proper meta tags and Open Graph data
+   - Image optimization for logos and assets
+   - Code splitting for optimal bundle sizes
+   - Implement proper loading indicators
+
+7. **SSR Compatibility - CRITICAL REQUIREMENTS**:
+   - **Always guard browser APIs**: `typeof window !== 'undefined'`
+   - **Safe localStorage access**: Check availability before use
+   - **Client-only code pattern**:
+     ```typescript
+     useEffect(() => {
+       if (typeof window === 'undefined') return;
+       // Client-side only code here
+     }, []);
+     ```
+
+## Cost Management & Monitoring
+
+1. **Real-Time Cost Tracking**:
+   - Monitor AI token usage per user/session
+   - Track third-party API calls and costs
+   - Implement cost alerts for unusual usage
+   - Generate daily cost reports by tier
+
+2. **Usage Enforcement**:
+   - Implement tier-based rate limiting
+   - Block users exceeding reasonable usage
+   - Provide clear usage limits in UI
+   - Queue expensive operations during low-cost periods
+
+3. **Optimization Strategies**:
+   - Cache expensive API responses
+   - Batch social media handle checks
+   - Use cheaper AI models for initial suggestions
+   - Implement smart retry logic to avoid waste
+
+4. **Margin Protection**:
+   - Target 90%+ gross margins on all tiers
+   - Monitor per-user profitability
+   - Adjust tier limits based on cost analysis
+   - Implement dynamic pricing if needed
+
+## Deployment & Environment Management
+
+1. **Environment Configuration**:
+   - Separate environments: development, staging, production
+   - Use environment variables for all configuration
+   - Implement proper secret management
+   - Use feature flags for gradual rollouts
+
+2. **CI/CD Pipeline**:
+   - Automated testing on all pull requests
+   - Database migration verification
+   - Cost impact analysis for new features
+   - Gradual deployment with rollback capability
+
+3. **Monitoring & Alerting**:
+   - Application performance monitoring (Sentry, DataDog)
+   - Business metrics tracking (revenue, conversions)
+   - Cost monitoring and alerting
+   - User behavior analytics
+
+This architecture ensures the NMC AI Domain Name Tool maintains high profit margins while delivering exceptional user value through intelligent cost management and tier-based feature delivery.
