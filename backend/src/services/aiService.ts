@@ -1,7 +1,7 @@
 import OpenAI from 'openai';
 
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+  apiKey: process.env['OPENAI_API_KEY'],
 });
 
 export const generateDomains = async (prompt: string): Promise<string> => {
@@ -22,7 +22,7 @@ export const generateDomains = async (prompt: string): Promise<string> => {
       temperature: 0.7,
     });
 
-    return completion.choices[0].message.content || '';
+    return completion.choices?.[0]?.message?.content || '';
   } catch (error) {
     console.error('AI generation error:', error);
     throw new Error('Failed to generate domains');

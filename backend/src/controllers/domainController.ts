@@ -1,10 +1,10 @@
 import { Request, Response } from 'express';
 import { generateDomains, parseDomainSuggestions } from '../services/aiService';
-import { checkDomainAvailability, validateDomainName } from '../services/domainService';
+import { checkDomainAvailability as checkDomainService, validateDomainName } from '../services/domainService';
 import { createGenerationSession } from '../config/supabase';
 import { ApiResponse, GenerateDomainsRequest, CheckAvailabilityRequest } from '../types';
 
-export const generateDomainSuggestions = async (req: Request, res: Response) => {
+export const generateDomainSuggestions = async (req: Request, res: Response): Promise<Response | void> => {
   try {
     const { prompt, user_id }: GenerateDomainsRequest = req.body;
 
@@ -33,21 +33,21 @@ export const generateDomainSuggestions = async (req: Request, res: Response) => 
       status: 'success',
       data: {
         domains: domainSuggestions,
-        session_id: sessionId
+        ...(sessionId && { session_id: sessionId })
       }
     };
 
-    res.json(response);
+    return res.json(response);
   } catch (error) {
     console.error('Domain generation error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       status: 'error',
       error: 'Failed to generate domain suggestions'
     } as ApiResponse<null>);
   }
 };
 
-export const checkDomainAvailability = async (req: Request, res: Response) => {
+export const checkDomainAvailabilityController = async (req: Request, res: Response): Promise<Response | void> => {
   try {
     const { domain_name }: CheckAvailabilityRequest = req.body;
 
@@ -58,7 +58,7 @@ export const checkDomainAvailability = async (req: Request, res: Response) => {
       } as ApiResponse<null>);
     }
 
-    const isAvailable = await checkDomainAvailability(domain_name);
+    const isAvailable = await checkDomainService(domain_name);
 
     const response: ApiResponse<{
       domain_name: string;
@@ -71,10 +71,10 @@ export const checkDomainAvailability = async (req: Request, res: Response) => {
       }
     };
 
-    res.json(response);
+    return res.json(response);
   } catch (error) {
     console.error('Domain availability check error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       status: 'error',
       error: 'Failed to check domain availability'
     } as ApiResponse<null>);

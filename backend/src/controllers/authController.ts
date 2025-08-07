@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { getUserByEmail } from '../config/supabase';
 import { ApiResponse, User } from '../types';
 
-export const getCurrentUser = async (req: Request, res: Response) => {
+export const getCurrentUser = async (req: Request, res: Response): Promise<Response | void> => {
   try {
     // For Day 1, this is a simplified implementation
     // In Phase 2, this will integrate with Supabase Auth middleware
@@ -29,10 +29,10 @@ export const getCurrentUser = async (req: Request, res: Response) => {
       data: user
     };
 
-    res.json(response);
+    return res.json(response);
   } catch (error) {
     console.error('Get current user error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       status: 'error',
       error: 'Failed to get current user'
     } as ApiResponse<null>);

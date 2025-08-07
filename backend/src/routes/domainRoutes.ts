@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { generateDomainSuggestions, checkDomainAvailability } from '../controllers/domainController';
+import { generateDomainSuggestions, checkDomainAvailabilityController } from '../controllers/domainController';
 
 const router = Router();
 
@@ -7,6 +7,6 @@ const router = Router();
 router.post('/generate', generateDomainSuggestions);
 
 // Domain availability checking endpoint
-router.post('/check-availability', checkDomainAvailability);
+router.post('/check-availability', checkDomainAvailabilityController);
 
 export default router;

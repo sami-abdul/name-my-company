@@ -1,20 +1,21 @@
-import express from 'express';
-import cors from 'cors';
 import dotenv from 'dotenv';
 
-// Import routes
+// Load environment variables FIRST before any other imports
+dotenv.config();
+
+import express from 'express';
+import cors from 'cors';
+
+// Import routes (now that env vars are loaded)
 import domainRoutes from './routes/domainRoutes';
 import authRoutes from './routes/authRoutes';
 
-// Load environment variables
-dotenv.config();
-
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env['PORT'] || 3000;
 
 // Basic middleware
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+  origin: process.env['CORS_ORIGIN'] || 'http://localhost:3000',
   credentials: true,
 }));
 app.use(express.json());
@@ -24,12 +25,12 @@ app.use('/api/domains', domainRoutes);
 app.use('/auth', authRoutes);
 
 // Health check endpoint
-app.get('/health', (req, res) => {
+app.get('/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
 // Basic error handling
-app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
+app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error(err);
   res.status(500).json({ error: 'Something went wrong' });
 });
