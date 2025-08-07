@@ -1,31 +1,187 @@
 import OpenAI from 'openai';
 
+// Initialize OpenAI client
 const openai = new OpenAI({
   apiKey: process.env['OPENAI_API_KEY'],
 });
 
-export const generateDomains = async (prompt: string): Promise<string> => {
-  try {
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        {
-          role: "system",
-          content: "You are a domain name generator. Generate 5 creative domain names based on the user's prompt. Return only the domain names, one per line, without any additional text or formatting."
-        },
-        {
-          role: "user",
-          content: prompt
-        }
-      ],
-      max_tokens: 500,
-      temperature: 0.7,
-    });
+// Initialize Groq client for LLaMA models (if API key is provided)
+let groqClient: any = null;
 
-    return completion.choices?.[0]?.message?.content || '';
+// Initialize Groq client asynchronously
+const initializeGroqClient = async () => {
+  if (process.env['GROQ_API_KEY'] && !groqClient) {
+    try {
+      // Use dynamic ES6 import instead of require
+      const { default: Groq } = await import('groq-sdk');
+      groqClient = new Groq({
+        apiKey: process.env['GROQ_API_KEY']
+      });
+      console.log('Groq client initialized successfully');
+    } catch (error) {
+      console.warn('Groq SDK not available, falling back to OpenAI only:', error);
+    }
+  }
+};
+
+export type AIModel = 'gpt-4o-mini' | 'gpt-4o' | 'llama-3-70b' | 'llama-3-8b';
+
+// Enhanced prompt engineering for better domain suggestions
+const createSystemPrompt = (businessType?: string, style?: string): string => {
+  const basePrompt = `You are an expert domain name generator specializing in creating brandable, memorable, and available domain names for businesses. 
+
+GUIDELINES:
+1. Generate exactly 5 domain names without the .com extension
+2. Focus on brandable names (not generic/descriptive)
+3. Keep names short (5-12 characters ideal)
+4. Make names easy to pronounce and spell
+5. Avoid hyphens, numbers, and confusing spellings
+6. Consider trademark-friendly options
+7. Think about modern naming trends (portmanteau, invented words, etc.)
+
+RESPONSE FORMAT:
+Return only the domain names, one per line, with no additional text, explanations, or formatting.`;
+
+  if (businessType || style) {
+    return basePrompt + `\n\nCONTEXT:\n${businessType ? `Business Type: ${businessType}` : ''}${style ? `\nStyle Preference: ${style}` : ''}`;
+  }
+
+  return basePrompt;
+};
+
+const createUserPrompt = (
+  prompt: string, 
+  businessType?: string, 
+  keywords?: string[]
+): string => {
+  let enhancedPrompt = `Business concept: ${prompt}`;
+  
+  if (businessType) {
+    enhancedPrompt += `\nIndustry: ${businessType}`;
+  }
+  
+  if (keywords && keywords.length > 0) {
+    enhancedPrompt += `\nKeywords to consider: ${keywords.join(', ')}`;
+  }
+  
+  return enhancedPrompt;
+};
+
+export const generateDomains = async (
+  prompt: string, 
+  options: {
+    model?: AIModel;
+    businessType?: string;
+    style?: string;
+    keywords?: string[];
+  } = {}
+): Promise<string> => {
+  const { model = 'gpt-4o-mini', businessType, style, keywords } = options;
+  
+  try {
+    // Validate OpenAI API key
+    if (!process.env['OPENAI_API_KEY']) {
+      throw new Error('OpenAI API key is not configured');
+    }
+
+    const systemPrompt = createSystemPrompt(businessType, style);
+    const userPrompt = createUserPrompt(prompt, businessType, keywords);
+    
+    console.log(`Generating domains with model: ${model}`);
+    
+    if (model.startsWith('llama')) {
+      // Try to initialize Groq client if not already done
+      if (!groqClient) {
+        await initializeGroqClient();
+      }
+      
+      // Use Groq if available, otherwise fall back to OpenAI
+      if (groqClient) {
+        return await generateWithGroq(model, systemPrompt, userPrompt);
+      } else {
+        console.warn(`Groq not available for ${model}, falling back to GPT-4o-mini`);
+        return await generateWithOpenAI('gpt-4o-mini', systemPrompt, userPrompt);
+      }
+    } else {
+      return await generateWithOpenAI(model, systemPrompt, userPrompt);
+    }
   } catch (error) {
     console.error('AI generation error:', error);
     throw new Error('Failed to generate domains');
+  }
+};
+
+const generateWithOpenAI = async (
+  model: string, 
+  systemPrompt: string, 
+  userPrompt: string
+): Promise<string> => {
+  const openaiModel = model === 'gpt-4o' ? 'gpt-4o' : 'gpt-4o-mini';
+  
+  const completion = await openai.chat.completions.create({
+    model: openaiModel,
+    messages: [
+      {
+        role: "system",
+        content: systemPrompt
+      },
+      {
+        role: "user",
+        content: userPrompt
+      }
+    ],
+    max_tokens: 300,
+    temperature: 0.8,
+    top_p: 0.9,
+    frequency_penalty: 0.5, // Encourage diversity
+    presence_penalty: 0.3,
+  });
+
+  return completion.choices?.[0]?.message?.content || '';
+};
+
+const generateWithGroq = async (
+  model: string, 
+  systemPrompt: string, 
+  userPrompt: string
+): Promise<string> => {
+  if (!groqClient) {
+    throw new Error('Groq client not initialized');
+  }
+  
+  const groqModel = model === 'llama-3-70b' ? 'llama3-70b-8192' : 'llama3-8b-8192';
+  
+  const completion = await groqClient.chat.completions.create({
+    model: groqModel,
+    messages: [
+      {
+        role: "system",
+        content: systemPrompt
+      },
+      {
+        role: "user",
+        content: userPrompt
+      }
+    ],
+    max_tokens: 300,
+    temperature: 0.8,
+    top_p: 0.9,
+  });
+
+  return completion.choices?.[0]?.message?.content || '';
+};
+
+// Get the most cost-effective model for a given tier
+export const getModelForTier = (tier: 'free' | 'mid' | 'premium'): AIModel => {
+  switch (tier) {
+    case 'free':
+      return groqClient ? 'llama-3-8b' : 'gpt-4o-mini'; // Cheapest option
+    case 'mid':
+      return 'gpt-4o-mini'; // Good quality, low cost
+    case 'premium':
+      return 'gpt-4o'; // Best quality
+    default:
+      return 'gpt-4o-mini';
   }
 };
 

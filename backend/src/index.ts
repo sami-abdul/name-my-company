@@ -24,9 +24,45 @@ app.use(express.json());
 app.use('/api/domains', domainRoutes);
 app.use('/auth', authRoutes);
 
-// Health check endpoint
-app.get('/health', (_req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+// Health check endpoint with comprehensive status
+app.get('/health', async (_req, res) => {
+  const health = {
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    services: {
+      database: 'unknown',
+      ai: 'unknown',
+      domain_api: 'unknown'
+    }
+  };
+
+  try {
+    // Check database connection
+    const { checkDatabaseConnection } = await import('./config/supabase');
+    health.services.database = await checkDatabaseConnection() ? 'healthy' : 'unhealthy';
+  } catch (error) {
+    health.services.database = 'error';
+  }
+
+  // Check AI service
+  try {
+    health.services.ai = process.env['OPENAI_API_KEY'] ? 'configured' : 'not_configured';
+  } catch (error) {
+    health.services.ai = 'error';
+  }
+
+  // Check domain API
+  try {
+    health.services.domain_api = process.env['DOMAINR_API_KEY'] || process.env['RAPIDAPI_KEY'] ? 'configured' : 'not_configured';
+  } catch (error) {
+    health.services.domain_api = 'error';
+  }
+
+  // Determine overall status
+  const hasErrors = Object.values(health.services).some(status => status === 'error' || status === 'unhealthy');
+  health.status = hasErrors ? 'degraded' : 'ok';
+
+  res.json(health);
 });
 
 // Basic error handling

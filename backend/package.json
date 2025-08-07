@@ -7,7 +7,8 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "dev": "nodemon src/index.ts",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "test:integration": "ts-node test/day2-integration-test.ts"
   },
   "keywords": ["ai", "domain", "generator", "supabase", "openai"],
   "author": "",
@@ -18,7 +19,8 @@
     "@supabase/supabase-js": "^2.38.0",
     "uuid": "^9.0.1",
     "dotenv": "^16.3.1",
-    "openai": "^4.20.1"
+    "openai": "^4.20.1",
+    "groq-sdk": "^0.3.1"
   },
   "devDependencies": {
     "@types/node": "^20.8.0",

@@ -1,32 +1,41 @@
 import { Request, Response } from 'express';
-import { getUserByEmail } from '../config/supabase';
+import { getUserByEmail, createUser } from '../config/supabase';
 import { ApiResponse, User } from '../types';
 
 export const getCurrentUser = async (req: Request, res: Response): Promise<Response | void> => {
   try {
-    // For Day 1, this is a simplified implementation
-    // In Phase 2, this will integrate with Supabase Auth middleware
-    const userEmail = req.headers['x-user-email'] as string;
-
-    if (!userEmail) {
+    // Get user from authentication middleware
+    const authUser = (req as any).user;
+    
+    if (!authUser) {
       return res.status(401).json({
         status: 'error',
-        error: 'User email not provided'
+        error: 'User not authenticated'
       } as ApiResponse<null>);
     }
 
-    const user = await getUserByEmail(userEmail);
+    // Try to get user from our database
+    let user = await getUserByEmail(authUser.email);
 
+    // If user doesn't exist in our database, create them
     if (!user) {
-      return res.status(404).json({
-        status: 'error',
-        error: 'User not found'
-      } as ApiResponse<null>);
+      try {
+        user = await createUser(authUser.email, authUser.user_metadata?.name || authUser.email);
+      } catch (createError) {
+        console.error('Failed to create user in database:', createError);
+        return res.status(500).json({
+          status: 'error',
+          error: 'Failed to initialize user account'
+        } as ApiResponse<null>);
+      }
     }
 
-    const response: ApiResponse<User> = {
+    const response: ApiResponse<User & { auth_id: string }> = {
       status: 'success',
-      data: user
+      data: {
+        ...user,
+        auth_id: authUser.id
+      }
     };
 
     return res.json(response);
