@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { generateDomains, parseDomainSuggestions, getModelForTier, AIModel } from '../services/aiService';
 import { checkDomainAvailability as checkDomainService, validateDomainName } from '../services/domainService';
 import { createGenerationSession, saveDomainSuggestions, getUserByEmail, getUserSessions } from '../config/supabase';
-import { ApiResponse, GenerateDomainsRequest, CheckAvailabilityRequest } from '../types';
+import { ApiResponse, CheckAvailabilityRequest } from '../types';
 
 export const generateDomainSuggestions = async (req: Request, res: Response): Promise<Response | void> => {
   try {
@@ -46,7 +46,7 @@ export const generateDomainSuggestions = async (req: Request, res: Response): Pr
         sessionId = session.id;
         
         // Save domain suggestions to database
-        await saveDomainSuggestions(sessionId, domainSuggestions);
+        await saveDomainSuggestions(session.id, domainSuggestions);
         console.log(`Saved ${domainSuggestions.length} domain suggestions for session ${sessionId}`);
       } catch (dbError) {
         console.error('Database error during generation:', dbError);
@@ -124,7 +124,7 @@ export const checkDomainAvailabilityController = async (req: Request, res: Respo
 export const getUserGenerationHistory = async (req: Request, res: Response): Promise<Response | void> => {
   try {
     const authUser = (req as any).user;
-    const limit = parseInt(req.query.limit as string) || 10;
+    const limit = parseInt(req.query['limit'] as string) || 10;
 
     if (!authUser) {
       return res.status(401).json({

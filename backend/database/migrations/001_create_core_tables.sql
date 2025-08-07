@@ -51,17 +51,20 @@ ALTER TABLE domain_suggestions ENABLE ROW LEVEL SECURITY;
 
 -- Basic RLS policies (will be enhanced in Phase 2 with proper auth)
 -- For now, allow all operations for service role
-CREATE POLICY IF NOT EXISTS "Allow service role full access on users" 
+DROP POLICY IF EXISTS "Allow service role full access on users" ON users;
+CREATE POLICY "Allow service role full access on users" 
     ON users FOR ALL 
     USING (true) 
     WITH CHECK (true);
 
-CREATE POLICY IF NOT EXISTS "Allow service role full access on generation_sessions" 
+DROP POLICY IF EXISTS "Allow service role full access on generation_sessions" ON generation_sessions;
+CREATE POLICY "Allow service role full access on generation_sessions" 
     ON generation_sessions FOR ALL 
     USING (true) 
     WITH CHECK (true);
 
-CREATE POLICY IF NOT EXISTS "Allow service role full access on domain_suggestions" 
+DROP POLICY IF EXISTS "Allow service role full access on domain_suggestions" ON domain_suggestions;
+CREATE POLICY "Allow service role full access on domain_suggestions" 
     ON domain_suggestions FOR ALL 
     USING (true) 
     WITH CHECK (true);

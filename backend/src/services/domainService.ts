@@ -58,7 +58,7 @@ const checkDomainWithDomainr = async (domainName: string): Promise<boolean> => {
       throw new Error(`Domainr API error: ${response.status} ${response.statusText}`);
     }
 
-    const data = await response.json();
+    const data = await response.json() as any;
     
     // Domainr returns status array with availability info
     if (data.status && data.status.length > 0) {

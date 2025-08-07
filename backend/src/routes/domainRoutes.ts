@@ -9,7 +9,6 @@ import {
   validateDomainGenerationRequest, 
   validateDomainAvailabilityRequest,
   authenticateUser,
-  validateUserEmailHeader,
   sanitizeInput,
   rateLimitByIP
 } from '../middleware/validation';

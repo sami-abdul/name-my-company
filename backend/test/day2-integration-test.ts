@@ -2,12 +2,13 @@
 // This script tests the core functionality and security fixes
 
 import { config } from 'dotenv';
+
+// Load environment variables FIRST before any other imports
+config();
+
 import { createUser, getUserByEmail, createGenerationSession, checkDatabaseConnection } from '../src/config/supabase';
 import { generateDomains, getModelForTier } from '../src/services/aiService';
 import { checkDomainAvailability } from '../src/services/domainService';
-
-// Load environment variables
-config();
 
 console.log('🚀 Starting Day 2 Integration Tests...\n');
 
@@ -172,11 +173,11 @@ async function testEnvironmentConfig() {
   console.log('\n⚙️ Testing Environment Configuration...');
   
   const checks = {
-    supabase_url: !!process.env.SUPABASE_URL,
-    supabase_key: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
-    openai_key: !!process.env.OPENAI_API_KEY,
-    domain_api_key: !!(process.env.DOMAINR_API_KEY || process.env.RAPIDAPI_KEY),
-    groq_key: !!process.env.GROQ_API_KEY
+    supabase_url: !!process.env['SUPABASE_URL'],
+    supabase_key: !!process.env['SUPABASE_SERVICE_ROLE_KEY'],
+    openai_key: !!process.env['OPENAI_API_KEY'],
+    domain_api_key: !!(process.env['DOMAINR_API_KEY'] || process.env['RAPIDAPI_KEY']),
+    groq_key: !!process.env['GROQ_API_KEY']
   };
   
   console.log('Environment variables:');

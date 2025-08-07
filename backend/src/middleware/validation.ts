@@ -155,7 +155,7 @@ export const validateUserEmailHeader = (
 };
 
 // Enhanced request sanitization with SQL injection prevention
-export const sanitizeInput = (req: Request, res: Response, next: NextFunction): void => {
+export const sanitizeInput = (req: Request, _res: Response, next: NextFunction): void => {
   // Sanitize string inputs to prevent XSS and SQL injection
   const sanitizeString = (str: string): string => {
     // Remove script tags

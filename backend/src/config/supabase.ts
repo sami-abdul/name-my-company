@@ -59,7 +59,7 @@ export const createUser = async (email: string, name: string) => {
     
     if (error) {
       // Don't log sensitive database details in production
-      const isProduction = process.env.NODE_ENV === 'production';
+      const isProduction = process.env['NODE_ENV'] === 'production';
       if (!isProduction) {
         console.error('Database error creating user:', error);
       }
@@ -102,7 +102,7 @@ export const createGenerationSession = async (
       .single();
     
     if (error) {
-      const isProduction = process.env.NODE_ENV === 'production';
+      const isProduction = process.env['NODE_ENV'] === 'production';
       if (!isProduction) {
         console.error('Database error creating generation session:', error);
       }
@@ -154,7 +154,7 @@ export const saveDomainSuggestions = async (
       .select();
     
     if (error) {
-      const isProduction = process.env.NODE_ENV === 'production';
+      const isProduction = process.env['NODE_ENV'] === 'production';
       if (!isProduction) {
         console.error('Database error saving domain suggestions:', error);
       }
@@ -206,7 +206,7 @@ export const getUserByEmail = async (email: string) => {
       .single();
     
     if (error && error.code !== 'PGRST116') {
-      const isProduction = process.env.NODE_ENV === 'production';
+      const isProduction = process.env['NODE_ENV'] === 'production';
       if (!isProduction) {
         console.error('Database error getting user by email:', error);
       }
@@ -245,7 +245,7 @@ export const getUserSessions = async (userId: string, limit: number = 10) => {
 // Health check for database connection
 export const checkDatabaseConnection = async () => {
   try {
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('users')
       .select('count')
       .limit(1);
