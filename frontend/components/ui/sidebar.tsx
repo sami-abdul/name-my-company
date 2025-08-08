@@ -120,22 +120,23 @@ export function MobileSidebar({
   const { open, setOpen } = useSidebar();
   return (
     <>
-      <div
+       <div
         className={cn(
           "h-16 px-4 py-4 flex flex-row md:hidden items-center justify-between bg-neutral-100 dark:bg-neutral-800 w-full border-b border-neutral-200 dark:border-neutral-700"
         )}
         {...props}
       >
         <div className="flex items-center justify-between w-full">
-          <div className="font-semibold">Domain AI</div>
+           <div className="font-semibold" aria-label="App name">Domain AI</div>
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" className="relative">
+             <Button variant="ghost" size="sm" className="relative" aria-label="Notifications">
               <Bell className="h-4 w-4" />
               <Badge className="absolute -top-1 -right-1 h-4 w-4 p-0 text-xs">3</Badge>
             </Button>
             <Menu
               className="text-neutral-800 dark:text-neutral-200 cursor-pointer hover:text-blue-600 transition-colors"
               onClick={() => setOpen(!open)}
+              aria-label="Toggle sidebar"
             />
           </div>
         </div>

@@ -573,7 +573,9 @@ export function AdvancedDomainManager() {
           }
           action={{
             label: activeFilterCount > 0 ? "Clear Filters" : "Generate Domains",
-            onClick: activeFilterCount > 0 ? clearFilters : () => window.location.href = '/'
+            ...(activeFilterCount > 0
+              ? { onClick: clearFilters }
+              : { href: '/' })
           }}
         />
       )}

@@ -30,7 +30,7 @@ export function DomainGenerator() {
     }, 2000);
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleGenerate();
@@ -56,7 +56,7 @@ export function DomainGenerator() {
               placeholder="e.g., AI-powered fitness tracking app for busy professionals"
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
-              onKeyPress={handleKeyPress}
+              onKeyDown={handleKeyDown}
               className="min-h-[100px] resize-none"
               disabled={isGenerating}
             />

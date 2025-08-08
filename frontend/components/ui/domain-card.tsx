@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Globe, Heart, HeartIcon, ExternalLink, Copy, MoreHorizontal, Palette, TrendingUp, Shield } from 'lucide-react';
+import { Globe, Heart, HeartIcon, ExternalLink, Copy, MoreHorizontal, Palette, Shield } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { Domain } from "@/types";
-import { cn, getStatusColor, formatDate } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
 
 interface DomainCardProps {
   domain: Domain;
@@ -43,9 +43,14 @@ export function DomainCard({
   };
 
   const handleCopy = async () => {
-    await navigator.clipboard.writeText(domain.fullDomain);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    try {
+      await navigator.clipboard.writeText(domain.fullDomain);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      setCopied(false);
+      // No toast system imported here; silently fail for now in UI-only scope
+    }
   };
 
   const getStatusBadge = () => {
@@ -103,6 +108,7 @@ export function DomainCard({
                 "p-1 h-8 w-8",
                 isFavorited && "text-red-500 hover:text-red-600"
               )}
+              aria-label={isFavorited ? `Remove ${domain.fullDomain} from favorites` : `Add ${domain.fullDomain} to favorites`}
             >
               {isFavorited ? (
                 <HeartIcon className="h-4 w-4 fill-current" />
@@ -113,16 +119,16 @@ export function DomainCard({
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="p-1 h-8 w-8">
+                <Button variant="ghost" size="sm" className="p-1 h-8 w-8" aria-label={`More actions for ${domain.fullDomain}`}>
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={handleCopy}>
+                <DropdownMenuItem onClick={handleCopy} aria-label={`Copy ${domain.fullDomain}`}>
                   <Copy className="h-4 w-4 mr-2" />
                   {copied ? 'Copied!' : 'Copy Domain'}
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onGenerateBranding?.(domain)}>
+                <DropdownMenuItem onClick={() => onGenerateBranding?.(domain)} aria-label={`Generate branding for ${domain.fullDomain}`}>
                   <Palette className="h-4 w-4 mr-2" />
                   Generate Branding
                 </DropdownMenuItem>
@@ -163,23 +169,24 @@ export function DomainCard({
         </div>
 
         <div className="flex gap-2">
-          {domain.isAvailable === undefined && (
+            {domain.isAvailable === undefined && (
             <Button
               variant="outline"
               size="sm"
               onClick={() => onCheckAvailability?.(domain)}
-              className="flex-1"
+                className="flex-1"
+                aria-label={`Check availability for ${domain.fullDomain}`}
             >
               <Shield className="h-4 w-4 mr-2" />
               Check Availability
             </Button>
           )}
           
-          {domain.isAvailable && (
-            <Button size="sm" className="flex-1">
-              Register Domain
-            </Button>
-          )}
+            {domain.isAvailable && (
+              <Button size="sm" className="flex-1" aria-label={`Register ${domain.fullDomain}`}>
+                Register Domain
+              </Button>
+            )}
           
           <Button
             variant="outline"

@@ -85,7 +85,7 @@ return (
       </div>
       <div className="flex items-center gap-2">
         <ThemeToggle />
-        <Button variant="ghost" size="sm" className="relative">
+        <Button variant="ghost" size="sm" className="relative" aria-label="Notifications">
           <Bell className="h-4 w-4" />
           <Badge className="absolute -top-1 -right-1 h-4 w-4 p-0 text-xs">3</Badge>
         </Button>
@@ -179,4 +179,4 @@ return (
 }
 
 // Import useSidebar hook
-import { useSidebar } from "@/components/ui/sidebar";
+// import { useSidebar } from "@/components/ui/sidebar"; // not used here

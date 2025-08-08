@@ -1,6 +1,7 @@
 import { type LucideIcon } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import Link from "next/link"
 
 interface EmptyStateProps {
   icon: LucideIcon
@@ -8,7 +9,8 @@ interface EmptyStateProps {
   description: string
   action?: {
     label: string
-    onClick: () => void
+    onClick?: () => void
+    href?: string
   }
   className?: string
 }
@@ -29,9 +31,17 @@ export function EmptyState({
         <h3 className="mb-2 text-lg font-semibold">{title}</h3>
         <p className="mb-4 text-muted-foreground max-w-sm">{description}</p>
         {action && (
-          <Button onClick={action.onClick}>
-            {action.label}
-          </Button>
+          action.href ? (
+            <Link href={action.href} aria-label={action.label} className="inline-block">
+              <Button>
+                {action.label}
+              </Button>
+            </Link>
+          ) : (
+            <Button onClick={action.onClick} aria-label={action.label}>
+              {action.label}
+            </Button>
+          )
         )}
       </CardContent>
     </Card>

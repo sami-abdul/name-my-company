@@ -198,7 +198,7 @@ export function MobileOptimizedSidebar({ isOpen, onClose }: MobileNavProps) {
                 <div className="h-8 w-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg flex-shrink-0" />
                 <span className="font-semibold text-lg">Domain AI</span>
               </div>
-              <Button variant="ghost" size="sm" onClick={onClose}>
+              <Button variant="ghost" size="sm" onClick={onClose} aria-label="Close mobile navigation">
                 <X className="h-5 w-5" />
               </Button>
             </div>
@@ -206,11 +206,11 @@ export function MobileOptimizedSidebar({ isOpen, onClose }: MobileNavProps) {
             {/* Quick Actions */}
             <div className="p-4 border-b bg-gray-50">
               <div className="grid grid-cols-2 gap-2">
-                <Button size="sm" className="h-10">
+                <Button size="sm" className="h-10" aria-label="Start generating domains">
                   <Sparkles className="h-4 w-4 mr-2" />
                   Generate
                 </Button>
-                <Button variant="outline" size="sm" className="h-10 relative">
+                <Button variant="outline" size="sm" className="h-10 relative" aria-label="View alerts">
                   <Bell className="h-4 w-4 mr-2" />
                   Alerts
                   <Badge className="absolute -top-1 -right-1 h-5 w-5 p-0 text-xs">3</Badge>

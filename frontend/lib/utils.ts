@@ -258,7 +258,5 @@ export function getStatusColor(status: string): string {
 }
 
 // Add this export at the end of the file
-export const DOMAIN_EXTENSIONS = [
-  '.com', '.net', '.org', '.io', '.co', '.ai', 
-  '.app', '.dev', '.tech', '.online', '.store', '.shop'
-];
+// Re-export extension list from constants to keep a single source of truth
+export { DOMAIN_EXTENSIONS } from '@/lib/constants';

@@ -9,6 +9,7 @@ import { DomainCard } from "@/components/ui/domain-card";
 import { Search, Filter, Download, Trash2, Heart, FolderOpen } from 'lucide-react';
 import { mockDomains } from "@/lib/utils";
 import type { Domain } from "@/types";
+import Link from "next/link";
 
 export function DomainManager() {
   const [domains, setDomains] = useState<Domain[]>(mockDomains);
@@ -132,7 +133,9 @@ export function DomainManager() {
             <p className="text-muted-foreground mb-4">
               {searchQuery ? 'Try adjusting your search terms' : 'Start generating domains to see them here'}
             </p>
-            <Button>Generate Domains</Button>
+            <Link href="/" aria-label="Go to generator" className="inline-block">
+              <Button>Generate Domains</Button>
+            </Link>
           </CardContent>
         </Card>
       )}

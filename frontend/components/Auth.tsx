@@ -52,14 +52,14 @@ export function Auth() {
 
   if (!user) {
     return (
-      <div className="p-3 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 group-data-[collapsed=true]:p-2 group-data-[collapsed=true]:flex group-data-[collapsed=true]:justify-center">
+      <div className="p-3 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 group-data-[collapsed=true]:p-2 group-data-[collapsed=true]:flex group-data-[collapsed=true]:justify-center" role="region" aria-label="Authentication">
         <div className="text-center mb-3 group-data-[collapsed=true]:hidden">
           <div className="text-sm font-medium mb-1">Welcome</div>
           <p className="text-xs text-neutral-600 dark:text-neutral-400">
             Sign in to access all features
           </p>
         </div>
-        <Button onClick={handleLogin} className="w-full h-8 text-xs group-data-[collapsed=true]:w-8 group-data-[collapsed=true]:p-0">
+        <Button onClick={handleLogin} className="w-full h-8 text-xs group-data-[collapsed=true]:w-8 group-data-[collapsed=true]:p-0" aria-label="Sign in with Google (mock)">
           <span className="group-data-[collapsed=true]:hidden">Sign in with Google</span>
           <LogIn className="h-4 w-4 group-data-[collapsed=true]:block hidden" />
         </Button>

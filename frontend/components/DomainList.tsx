@@ -19,6 +19,9 @@ export function DomainList({ domains }: DomainListProps) {
     
     // Simulate API call
     setTimeout(() => {
+      // Randomize availability result for demo purposes
+      const isAvailable = Math.random() > 0.4;
+      domain.isAvailable = isAvailable;
       setCheckingDomains(prev => {
         const newSet = new Set(prev);
         newSet.delete(domain.id);
@@ -84,13 +87,13 @@ export function DomainList({ domains }: DomainListProps) {
                     size="sm"
                     onClick={() => handleCheckAvailability(domain)}
                     disabled={checkingDomains.has(domain.id)}
-                  >
+                  aria-label={`Check availability for ${domain.fullDomain}`}>
                     Check Availability
                   </Button>
                 )}
                 
                 {domain.isAvailable && (
-                  <Button size="sm">
+                  <Button size="sm" aria-label={`Register ${domain.fullDomain}`}>
                     Register Domain
                   </Button>
                 )}
