@@ -1,17 +1,18 @@
-import { Router } from 'express';
-import { 
-  generateDomainSuggestions, 
-  checkDomainAvailabilityController, 
+import { Router } from "express";
+import {
+  generateDomainSuggestions,
+  checkDomainAvailabilityController,
   getUserGenerationHistory,
-  batchCheckDomainAvailability
-} from '../controllers/domainController';
-import { 
-  validateDomainGenerationRequest, 
+  batchCheckDomainAvailability,
+} from "../controllers/domainController";
+import {
+  validateDomainGenerationRequest,
   validateDomainAvailabilityRequest,
+  validateBatchDomainAvailabilityRequest,
   authenticateUser,
   sanitizeInput,
-  rateLimitByIP
-} from '../middleware/validation';
+  rateLimitByIP,
+} from "../middleware/validation";
 
 const router = Router();
 
@@ -22,15 +23,27 @@ router.use(rateLimitByIP(50, 15 * 60 * 1000)); // 50 requests per 15 minutes per
 router.use(sanitizeInput);
 
 // Domain generation endpoint with validation
-router.post('/generate', validateDomainGenerationRequest, generateDomainSuggestions);
+router.post(
+  "/generate",
+  validateDomainGenerationRequest,
+  generateDomainSuggestions
+);
 
 // Single domain availability checking endpoint
-router.post('/check-availability', validateDomainAvailabilityRequest, checkDomainAvailabilityController);
+router.post(
+  "/check-availability",
+  validateDomainAvailabilityRequest,
+  checkDomainAvailabilityController
+);
 
 // Batch domain availability checking endpoint
-router.post('/batch-check-availability', batchCheckDomainAvailability);
+router.post(
+  "/batch-check-availability",
+  validateBatchDomainAvailabilityRequest,
+  batchCheckDomainAvailability
+);
 
 // User generation history endpoint (requires authentication)
-router.get('/history', authenticateUser, getUserGenerationHistory);
+router.get("/history", authenticateUser, getUserGenerationHistory);
 
 export default router;
