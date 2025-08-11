@@ -13,6 +13,7 @@ import {
   sanitizeInput,
   rateLimitByIP,
 } from "../middleware/validation";
+import { enforceMonthlyUsageLimits } from "../middleware/usage";
 
 const router = Router();
 
@@ -26,6 +27,7 @@ router.use(sanitizeInput);
 router.post(
   "/generate",
   validateDomainGenerationRequest,
+  enforceMonthlyUsageLimits,
   generateDomainSuggestions
 );
 
