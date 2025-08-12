@@ -1,6 +1,10 @@
 import { Request, Response, NextFunction } from "express";
+import {
+  getUserSubscriptionStatus,
+  SubscriptionTier,
+} from "../services/paymentService";
 
-type Tier = "free" | "mid" | "premium";
+type Tier = SubscriptionTier;
 
 interface UsageCounter {
   count: number;
@@ -46,21 +50,43 @@ function getIdentifier(req: Request): string {
   return `ip:${ip}`;
 }
 
-function resolveTier(req: Request): Tier {
-  // If we later attach subscription tier to req.user, prefer that.
-  const bodyTier = (req.body?.tier as Tier | undefined) ?? "free";
-  if (bodyTier === "mid" || bodyTier === "premium") return bodyTier;
+async function resolveTier(req: Request): Promise<Tier> {
+  const user = (req as any).user as { id?: string; email?: string } | undefined;
+
+  try {
+    // Get actual subscription status from database
+    const subscription = await getUserSubscriptionStatus({
+      ...(user?.id && { userId: user.id }),
+      ...(user?.email && { customerEmail: user.email }),
+      ...(!user?.email &&
+        req.headers["x-user-email"] && {
+          customerEmail: req.headers["x-user-email"] as string,
+        }),
+    });
+
+    // Only return paid tiers if subscription is active
+    if (
+      subscription.status === "active" &&
+      (subscription.tier === "mid" || subscription.tier === "premium")
+    ) {
+      return subscription.tier;
+    }
+  } catch (error) {
+    console.error("Error resolving user tier:", error);
+  }
+
+  // Default to free tier
   return "free";
 }
 
-export function enforceMonthlyUsageLimits(
+export async function enforceMonthlyUsageLimits(
   req: Request,
   res: Response,
   next: NextFunction
 ) {
   try {
     const identifier = getIdentifier(req);
-    const tier = resolveTier(req);
+    const tier = await resolveTier(req);
     const limit = getTierLimit(tier);
     if (!Number.isFinite(limit)) {
       // Unlimited usage
@@ -78,15 +104,24 @@ export function enforceMonthlyUsageLimits(
     if (updated.count >= limit) {
       return res.status(429).json({
         status: "error",
-        error:
-          "Monthly usage limit reached for your tier. Please upgrade or wait until next month.",
+        error: `Monthly usage limit reached for your ${tier} tier. Please upgrade or wait until next month.`,
+        details: {
+          currentTier: tier,
+          usageCount: updated.count,
+          limit: limit,
+        },
       });
     }
 
     updated.count += 1;
     usageCounters.set(identifier, updated);
+
+    // Attach tier info to request for use in AI service
+    (req as any).userTier = tier;
+
     return next();
   } catch (error) {
+    console.error("Usage limit enforcement error:", error);
     // On error, fail-closed to avoid abuse
     return res.status(429).json({
       status: "error",

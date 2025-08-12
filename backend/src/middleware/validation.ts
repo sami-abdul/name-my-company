@@ -5,17 +5,31 @@ import { ApiResponse } from "../types";
 // Common helpers and schemas (Zod)
 const domainRegex = /^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]?\.[a-zA-Z]{2,}$/;
 
-const domainGenerationSchema = z.object({
-  prompt: z.string().min(1).max(500),
-  user_id: z.string().uuid().optional(),
-  business_type: z.string().optional(),
-  style: z.string().optional(),
-  keywords: z.array(z.string().min(1).max(64)).max(20).optional(),
-  model: z
-    .enum(["gpt-4o-mini", "gpt-4o", "llama-3-70b", "llama-3-8b"])
-    .optional(),
-  tier: z.enum(["free", "mid", "premium"]).optional(),
-});
+const domainGenerationSchema = z
+  .object({
+    // Support both old and new field names for backward compatibility
+    prompt: z.string().min(1).max(500).optional(),
+    businessNiche: z.string().min(1).max(500).optional(),
+    brandTone: z.string().min(1).max(100).optional(),
+    user_id: z.string().uuid().optional(),
+    business_type: z.string().optional(),
+    style: z.string().optional(),
+    keywords: z.array(z.string().min(1).max(64)).max(20).optional(),
+    model: z
+      .enum(["gpt-4o-mini", "gpt-4o", "llama-3-70b", "llama-3-8b"])
+      .optional(),
+    tier: z.enum(["free", "mid", "premium"]).optional(),
+  })
+  .refine(
+    (data) => {
+      // Ensure at least one of prompt or businessNiche is provided
+      return data.prompt || data.businessNiche;
+    },
+    {
+      message: "Either 'prompt' or 'businessNiche' is required",
+      path: ["prompt"],
+    }
+  );
 
 const domainAvailabilitySchema = z.object({
   domain_name: z.string().regex(domainRegex, "Invalid domain name format"),

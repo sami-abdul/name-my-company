@@ -1,0 +1,77 @@
+// Prisma schema mapping to existing Supabase Postgres tables
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String               @id @db.Uuid @default(dbgenerated("uuid_generate_v4()"))
+  email     String               @unique @db.VarChar(255)
+  name      String?              @db.VarChar(255)
+  createdAt DateTime?            @map("created_at") @db.Timestamptz(6) @default(dbgenerated("now()"))
+  updatedAt DateTime?            @map("updated_at") @db.Timestamptz(6) @default(dbgenerated("now()"))
+
+  sessions  GenerationSession[]
+  subscriptions Subscription[]
+
+  @@map("users")
+}
+
+model GenerationSession {
+  id         String             @id @db.Uuid @default(dbgenerated("uuid_generate_v4()"))
+  userId     String             @map("user_id") @db.Uuid
+  prompt     String             @db.VarChar(500)
+  modelUsed  String?            @map("model_used") @db.VarChar(100)
+  tokenCount Int?               @map("token_count")
+  createdAt  DateTime?          @map("created_at") @db.Timestamptz(6) @default(dbgenerated("now()"))
+
+  user       User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  domainSuggestions DomainSuggestion[]
+
+  @@index([userId], map: "idx_generation_sessions_user_id")
+  @@index([createdAt], map: "idx_generation_sessions_created_at")
+  @@map("generation_sessions")
+}
+
+model DomainSuggestion {
+  id         String     @id @db.Uuid @default(dbgenerated("uuid_generate_v4()"))
+  sessionId  String     @map("session_id") @db.Uuid
+  domainName String     @map("domain_name") @db.VarChar(255)
+  isAvailable Boolean?  @map("is_available")
+  checkedAt  DateTime?  @map("checked_at") @db.Timestamptz(6)
+  createdAt  DateTime?  @map("created_at") @db.Timestamptz(6) @default(dbgenerated("now()"))
+
+  session    GenerationSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId], map: "idx_domain_suggestions_session_id")
+  @@index([domainName], map: "idx_domain_suggestions_domain_name")
+  @@index([createdAt], map: "idx_domain_suggestions_created_at")
+  @@map("domain_suggestions")
+}
+
+model Subscription {
+  id                   String    @id @db.Uuid @default(dbgenerated("uuid_generate_v4()"))
+  userId               String    @map("user_id") @db.Uuid
+  stripeCustomerId     String?   @map("stripe_customer_id") @db.VarChar(255)
+  stripeSubscriptionId String?   @map("stripe_subscription_id") @db.VarChar(255)
+  tier                 String    @db.VarChar(20)
+  status               String    @db.VarChar(50)
+  currentPeriodEnd     DateTime? @map("current_period_end") @db.Timestamptz(6)
+  createdAt            DateTime? @map("created_at") @db.Timestamptz(6) @default(dbgenerated("now()"))
+  updatedAt            DateTime? @map("updated_at") @db.Timestamptz(6) @default(dbgenerated("now()"))
+
+  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId], map: "idx_subscriptions_user_id")
+  @@index([status], map: "idx_subscriptions_status")
+  @@map("subscriptions")
+}
+
+
+
+
